@@ -1,0 +1,42 @@
+{
+  "name": "controlcubiertas",
+  "version": "1.0.0",
+  "description": "Aplicación de escritorio para ControlCubiertas",
+  "author": "Patricio Pittana",
+  "main": "desktop/main.js",
+  "scripts": {
+    "build-react": "cd frontend && npm run build",
+    "build-desktop": "cp -r frontend/dist desktop/build && electron-builder",
+    "build": "npm run build-react && npm run build-desktop",
+    "electron:start": "electron desktop/main.js",
+    "electron:build": "electron-builder"
+  },
+  "devDependencies": {
+    "concurrently": "^7.0.0",
+    "electron": "^34.4.1",
+    "electron-builder": "^24.4.0"
+  },
+  "build": {
+    "appId": "com.TMBC.controlcubiertas",
+    "productName": "Control Cubiertas",
+    "publish": {
+      "provider": "github",
+      "owner": "Lunatico0",
+      "repo": "controlCubiertas"
+    },
+    "files": [
+      "desktop/**/*",
+      "!../backend"
+    ],
+    "directories": {
+      "buildResources": "desktop"
+    },
+    "win": {
+      "icon": "desktop/build/TMBC.ico",
+      "target": "nsis"
+    }
+  },
+  "dependencies": {
+    "electron-updater": "^6.6.2"
+  }
+}
