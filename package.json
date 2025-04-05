@@ -29,11 +29,18 @@
       "!../backend"
     ],
     "directories": {
+      "output": "dist",
       "buildResources": "desktop"
     },
+    "asar": true,
     "win": {
       "icon": "desktop/build/TMBC.ico",
       "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true
     }
   },
   "dependencies": {
