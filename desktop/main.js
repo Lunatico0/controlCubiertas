@@ -4,9 +4,24 @@ const path = require('path');
 const fs = require('fs');
 
 let mainWindow;
+let splash;
 
 function createWindow() {
-  console.log('[Electron] Creando ventana...');
+  console.log('[Electron] Creando ventana de splash...');
+
+  splashWindow = new BrowserWindow({
+    width: 400,
+    height: 300,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    show: true,
+  });
+
+  splashWindow.loadFile('splash.html');
+
+  console.log('[Electron] Creando ventana principal...');
 
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -17,6 +32,8 @@ function createWindow() {
       contextIsolation: true,
     },
   });
+
+  win.maximize();
 
   mainWindow.setMenu(null);
 
