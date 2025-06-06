@@ -6,7 +6,7 @@
   "main": "desktop/main.js",
   "scripts": {
     "build-react": "cd frontend && npm run build",
-    "build-desktop": "cp -r frontend/dist desktop/build && electron-builder",
+    "build-desktop": "electron-builder",
     "build": "npm run build-react && npm run build-desktop",
     "electron:start": "electron desktop/main.js",
     "electron:build": "electron-builder"
