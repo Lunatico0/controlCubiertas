@@ -89,7 +89,7 @@ function createWindow() {
     width: 1200,
     height: 800,
     show: false,
-    icon: path.join(__dirname, 'TMBC.ico'),
+    icon: path.join(__dirname, 'build', 'TMBC.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
