@@ -1,7 +1,10 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
-const fs = require('fs');
+const fs = require('fs');const log = require('electron-log');
+
+autoUpdater.logger = log;
+autoUpdater.logger.transports.file.level = 'info';
 
 let mainWindow;
 let splashWindow;
@@ -94,6 +97,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
+      devTools:true,
     },
   });
 
@@ -111,6 +115,8 @@ function createWindow() {
   mainWindow.loadFile(indexPath)
     .then(() => console.log('[Electron] index.html cargado correctamente'))
     .catch(err => console.error('[Electron] Error al cargar index.html:', err));
+
+  mainWindow.webContents.openDevTools();
 
   mainWindow.webContents.on('did-fail-load', (_, errorCode, errorDescription) => {
     console.error('[Electron] Fallo al cargar el contenido:', errorDescription, `(Código: ${errorCode})`);

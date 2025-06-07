@@ -35,7 +35,8 @@
     "asar": true,
     "win": {
       "icon": "desktop/TMBC.ico",
-      "target": "nsis"
+      "target": "nsis",
+      "artifactName": "Control-Cubiertas-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
