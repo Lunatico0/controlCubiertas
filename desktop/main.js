@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
-const fs = require('fs');const log = require('electron-log');
+const fs = require('fs'); const log = require('electron-log');
 
 autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
@@ -84,7 +84,7 @@ function createWindow() {
     show: true,
   });
 
-  splashWindow.loadFile('splash.html');
+  splashWindow.loadFile(path.join(__dirname, 'splash.html'));
 
   console.log('[Electron] Creando ventana principal...');
 
@@ -97,13 +97,22 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
-      devTools:true,
+      devTools: true,
     },
   });
 
   mainWindow.setOpacity(0);
   mainWindow.maximize();
   mainWindow.setMenu(null);
+
+  mainWindow.once('ready-to-show', () => {
+    console.log('[Electron] mainWindow listo para mostrar.');
+    if (splashWindow) {
+      splashWindow.close();
+      splashWindow = null;
+    }
+    fadeIn(mainWindow); // ahora sí mostrar
+  });
 
   const indexPath = path.join(__dirname, 'build', 'index.html');
 
@@ -116,8 +125,6 @@ function createWindow() {
     .then(() => console.log('[Electron] index.html cargado correctamente'))
     .catch(err => console.error('[Electron] Error al cargar index.html:', err));
 
-  mainWindow.webContents.openDevTools();
-
   mainWindow.webContents.on('did-fail-load', (_, errorCode, errorDescription) => {
     console.error('[Electron] Fallo al cargar el contenido:', errorDescription, `(Código: ${errorCode})`);
   });
@@ -127,13 +134,6 @@ function createWindow() {
 
     // Esperamos al menos 1 segundo para mostrar el splash
     await new Promise(resolve => setTimeout(resolve, 1000));
-
-    if (splashWindow) {
-      splashWindow.close();
-      splashWindow = null;
-    }
-
-    fadeIn(mainWindow);
   });
 
   mainWindow.on('closed', () => {
