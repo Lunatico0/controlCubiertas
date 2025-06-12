@@ -1,8 +1,10 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
-const fs = require('fs'); const log = require('electron-log');
+const fs = require('fs');
+const log = require('electron-log');
 
+log.transports.file.resolvePath = () => path.join(app.getPath('userData'), 'update.log')
 autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
 
@@ -24,7 +26,7 @@ function fadeIn(window, duration = 300, step = 0.08) {
   }, duration * step); // el paso determina la velocidad del fade
 }
 
-ipcMain.handle('imprimir-html', async (_, html) => {
+ipcMain.handle('imprimir-html', async (_, datos) => {
   const win = new BrowserWindow({
     width: 800,
     height: 600,
@@ -38,11 +40,14 @@ ipcMain.handle('imprimir-html', async (_, html) => {
   const cssPath = path.join(__dirname, 'build', 'print-css.css');
 
   try {
+    // Cargar el HTML base de plantilla
     let html = fs.readFileSync(templatePath, 'utf8');
-    const css = fs.readFileSync(cssPath, 'utf8');
 
+    // Inyectar el CSS directamente en el <head>
+    const css = fs.readFileSync(cssPath, 'utf8');
     html = html.replace('</head>', `<style>${css}</style></head>`);
 
+    // Reemplazar {{llaves}} por datos reales
     if (datos && typeof datos === 'object') {
       Object.keys(datos).forEach(key => {
         const regex = new RegExp(`{{${key}}}`, 'g');
@@ -50,18 +55,19 @@ ipcMain.handle('imprimir-html', async (_, html) => {
       });
     }
 
+    // Cargar el HTML procesado en una ventana invisible
     await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
 
+    // Imprimir cuando se haya terminado de renderizar
     win.webContents.on('did-finish-load', () => {
-      win.webContents.print({ silent: true, printBackground: true },
-        (success, failureReason) => {
-          console.log('[Electron] Impresión completada:', success, failureReason);
-          win.close();
-        });
+      win.webContents.print({ silent: true, printBackground: true }, (success, failureReason) => {
+        log.info('[Electron] Impresión completada:', success, failureReason);
+        win.close();
+      });
     });
 
   } catch (err) {
-    console.error('[Electron] Error durante la impresion:', err);
+    log.error('[Electron] Error durante la impresión:', err);
     win.close();
   }
 });
@@ -166,7 +172,6 @@ app.whenReady().then(() => {
 
   autoUpdater.on('update-downloaded', () => {
     console.log('[AutoUpdater] Actualización descargada. Se instalará al cerrar.');
-    // También podrías notificar desde acá
   });
 
   autoUpdater.on('error', err => {
