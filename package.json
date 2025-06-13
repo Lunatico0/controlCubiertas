@@ -1,6 +1,6 @@
 {
   "name": "controlcubiertas",
-  "version": "1.1.8",
+  "version": "1.1.9",
   "description": "Aplicación de escritorio para ControlCubiertas",
   "author": "Patricio Pittana",
   "main": "desktop/main.js",

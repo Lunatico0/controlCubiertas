@@ -72,6 +72,11 @@ ipcMain.handle('imprimir-html', async (_, datos) => {
   }
 });
 
+ipcMain.on('update:check', () => {
+  console.log('[AutoUpdater] Forzando verificación de actualizaciones...');
+  autoUpdater.checkForUpdates();
+});
+
 ipcMain.on('update:install', () => {
   console.log('[AutoUpdater] Usuario aceptó instalar la actualización.');
   autoUpdater.quitAndInstall();
