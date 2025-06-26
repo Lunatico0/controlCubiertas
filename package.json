@@ -1,12 +1,12 @@
 {
   "name": "controlcubiertas",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Aplicación de escritorio para ControlCubiertas",
   "author": "Patricio Pittana",
   "main": "desktop/main.js",
   "scripts": {
     "build-react": "cd frontend && npm run build:electron",
-    "build-desktop": "dotenv -e .env -- electron-builder",
+    "build-desktop": "electron-builder",
     "build": "npm run build-react && npm run build-desktop",
     "electron:start": "electron desktop/main.js",
     "electron:build": "electron-builder",
@@ -15,7 +15,6 @@
   "devDependencies": {
     "concurrently": "^7.0.0",
     "electron": "^34.4.1",
-    "dotenv-cli": "^8.0.0",
     "electron-builder": "^24.4.0"
   },
   "build": {
