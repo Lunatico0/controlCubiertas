@@ -8,6 +8,8 @@ node_modules
 /dist/win-unpacked/Control Cubiertas.exe
 *.exe
 refactorizacion.txt
+Ejes camiones.txt
+Gestion cubiertas.txt
 tree.txt
 
 build/
