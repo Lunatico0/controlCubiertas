@@ -65,10 +65,10 @@
 - **Detectado:** al aislar el test de integración (Hito 2a). El test pasa con `tires: []`; con cubiertas reales reventaría.
 - **Fix propuesto:** reemplazar el `tire.history.push` por `addHistoryEntry` (que crea en la colección `History`) y setear `tire.vehicle`; agregar guard `(tires || [])`.
 
-## 🔵 Limpieza — console.log de debug en tire.service
+## 🔵 Limpieza — console.log de debug
 
-- **Estado:** `[ ]` pendiente
-- **Detalle:** [tire.service.js](backend/src/services/tire.service.js) (~líneas 134-139) tiene `console.log` de `kmAlta` / `kmBaja` / `kmRecorridos`. Quitarlos o pasarlos al logger.
+- **Estado:** `[x]` hecho en hito 2b — quitados de `tire.service.js` (kmAlta/kmBaja/kmRecorridos) y `tire.controller.js` ("🧾 Receipt recibido").
+- **Pendiente relacionado:** `backend/src/services/tire.service.logged.js` es **código muerto** (nadie lo importa; el service en uso es `tire.service.js`). Eliminar en una limpieza futura.
 
 ## 🛠️ Scripts de utilidad (backend/scripts/)
 
