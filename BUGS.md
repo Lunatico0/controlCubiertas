@@ -56,6 +56,20 @@
 
 ---
 
+## 🟠 Bug 5 — Crear vehículo asignando cubiertas explota
+
+- **Estado:** `[ ]` pendiente
+- **Severidad:** media
+- **Síntoma:** `POST /api/vehicles` con `tires: [ids]` falla. Solo funciona con `tires: []`.
+- **Causa:** en [vehicle.controller.js](backend/src/controller/vehicle.controller.js) (~línea 53) hace `tire.history.push(...)`, pero el modelo `Tire` NO tiene campo `history` (el historial vive en la colección `History`) → `tire.history` es `undefined` y `.push` explota. Además `create` no tiene guard si `tires` viene `undefined`.
+- **Detectado:** al aislar el test de integración (Hito 2a). El test pasa con `tires: []`; con cubiertas reales reventaría.
+- **Fix propuesto:** reemplazar el `tire.history.push` por `addHistoryEntry` (que crea en la colección `History`) y setear `tire.vehicle`; agregar guard `(tires || [])`.
+
+## 🔵 Limpieza — console.log de debug en tire.service
+
+- **Estado:** `[ ]` pendiente
+- **Detalle:** [tire.service.js](backend/src/services/tire.service.js) (~líneas 134-139) tiene `console.log` de `kmAlta` / `kmBaja` / `kmRecorridos`. Quitarlos o pasarlos al logger.
+
 ## 🛠️ Scripts de utilidad (backend/scripts/)
 
 - [backend/scripts/inspect-db.js](backend/scripts/inspect-db.js) — inspecciona colecciones/volumen de la DB (solo lectura).
