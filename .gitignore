@@ -21,3 +21,6 @@ build/
 *.AppImage
 *.asar
 latest.yml
+
+# Roadmap interno SaaS (planificación, no versionado)
+/.saas-roadmap/
