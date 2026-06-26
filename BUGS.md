@@ -35,7 +35,7 @@
 
 ## 🟠 Bug 3 — Referencias colgadas en `vehicle.tires[]` (integridad de datos)
 
-- **Estado:** `[ ]` pendiente
+- **Estado:** `[x]` mitigado en fase 04 — preventivo ya existía (`unassignVehicle` filtra el array); script de saneamiento de las refs preexistentes en [backend/scripts/sanitize-tire-refs.js](backend/scripts/sanitize-tire-refs.js) (correr sobre cada DB de tenant). _(antes:)_
 - **Severidad:** media (datos inconsistentes en producción)
 - **Síntoma:** En la DB real hay **12 referencias** en `vehicle.tires[]` que apuntan a cubiertas (`_id`) que **ya no existen** en la colección `tires`. Detectado al clonar la DB para la demo y correr `backend/scripts/verify-demo.js` (origen y demo dieron las mismas 12 → es preexistente, no lo introdujo el seed).
 - **Causa probable:** Al borrar/descartar una cubierta no se la quita del array `tires[]` del vehículo que la tenía (falta limpieza de la relación inversa). Mismo patrón que el Bug 1: la app no mantiene la consistencia del grafo tras una acción.
@@ -58,7 +58,7 @@
 
 ## 🟠 Bug 5 — Crear vehículo asignando cubiertas explota
 
-- **Estado:** `[ ]` pendiente
+- **Estado:** `[x]` RESUELTO en fase 04 — `vehicle.controller` usa `addHistoryEntry` (colección History) en vez de `tire.history.push`. Cubierto por `vehicleWithTires.test.js`. _(antes:)_
 - **Severidad:** media
 - **Síntoma:** `POST /api/vehicles` con `tires: [ids]` falla. Solo funciona con `tires: []`.
 - **Causa:** en [vehicle.controller.js](backend/src/controller/vehicle.controller.js) (~línea 53) hace `tire.history.push(...)`, pero el modelo `Tire` NO tiene campo `history` (el historial vive en la colección `History`) → `tire.history` es `undefined` y `.push` explota. Además `create` no tiene guard si `tires` viene `undefined`.
