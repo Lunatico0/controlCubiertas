@@ -1,0 +1,8 @@
+{
+  // El diseño es pixel-perfect (viene de Claude Design) y usa medidas fuera de la escala de
+  // Tailwind (text-[14.5px], rounded-[11px], etc.). La sugerencia de "clase canónica" convertiría
+  // px legibles en fracciones oscuras (mb-[15px] -> mb-3.75) sin ganancia real, así que la
+  // silenciamos. Las conversiones que SÍ ganan legibilidad (rounded-md/lg/xl, tracking-wider/widest,
+  // z-N) ya se aplicaron en el código.
+  "tailwindCSS.lint.suggestCanonicalClasses": "ignore"
+}
