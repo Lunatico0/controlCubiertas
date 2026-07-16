@@ -2,13 +2,9 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Splash</title>
+  <title>Control Cubiertas</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     html, body {
       width: 100%;
@@ -18,49 +14,81 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      flex-direction: column;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
     }
 
-    img {
-      width: 128px;
-      height: 128px;
+    .card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 22px;
+      padding: 40px 52px;
+      background: #0f1216;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
     }
+
+    /* Bloque de marca por defecto (Control Cubiertas) */
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .brand svg { width: 52px; height: 52px; }
+    .brand .name { font-weight: 700; letter-spacing: .02em; line-height: .98; }
+    .brand .name .l1 { color: #f5f6f7; font-size: 20px; }
+    .brand .name .l2 { color: #C4ED2B; font-size: 20px; }
+
+    /* Logo del tenant (cacheado) — reemplaza al bloque de marca cuando existe */
+    #tenantLogo { display: none; max-width: 200px; max-height: 128px; object-fit: contain; }
 
     .loader {
-      margin-top: 20px;
-      width: 100px;
-      height: 10px;
-      background: rgba(255, 255, 255, 0.1);
+      width: 160px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
       border-radius: 5px;
       overflow: hidden;
       position: relative;
     }
-
     .loader::before {
       content: "";
       position: absolute;
       width: 30%;
       height: 100%;
-      background: rgba(255, 255, 255, 0.5);
-      animation: load 1.5s infinite;
+      background: #C4ED2B;
+      animation: load 1.4s infinite;
       border-radius: 5px;
     }
-
     @keyframes load {
-      0% {
-        left: -30%;
-      }
-      50% {
-        left: 100%;
-      }
-      100% {
-        left: 100%;
-      }
+      0% { left: -30%; }
+      50% { left: 100%; }
+      100% { left: 100%; }
     }
   </style>
 </head>
 <body>
-  <img src="./build/TMBC.png" alt="Logo" />
-  <div class="loader"></div>
+  <div class="card">
+    <img id="tenantLogo" alt="" />
+    <div class="brand" id="brandDefault">
+      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="20" cy="20" r="18" stroke="#C4ED2B" stroke-width="3.4" stroke-dasharray="78 22" stroke-linecap="round" transform="rotate(-50 20 20)"/>
+        <circle cx="20" cy="20" r="6.4" stroke="#C4ED2B" stroke-width="3.4"/>
+      </svg>
+      <div class="name"><div class="l1">CONTROL</div><div class="l2">CUBIERTAS</div></div>
+    </div>
+    <div class="loader"></div>
+  </div>
+
+  <script>
+    // main.js inyecta el logo cacheado del tenant (dataURL) tras did-finish-load.
+    // Sin logo (primer arranque o tenant sin logo) → queda el bloque de marca Control Cubiertas.
+    window.__setLogo = function (dataUrl) {
+      if (!dataUrl) return;
+      var img = document.getElementById("tenantLogo");
+      var def = document.getElementById("brandDefault");
+      img.onload = function () {
+        def.style.display = "none";
+        img.style.display = "block";
+      };
+      img.src = dataUrl;
+    };
+  </script>
 </body>
 </html>

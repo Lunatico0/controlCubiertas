@@ -11,6 +11,18 @@ autoUpdater.logger.transports.file.level = 'info';
 let mainWindow;
 let splashWindow;
 
+// Logo del tenant cacheado para el splash (dataURL). Se escribe tras el login
+// (IPC tenant:cacheLogo) y se lee en el próximo arranque. Sin cache (primer inicio
+// o tenant sin logo) → el splash muestra la marca Control Cubiertas.
+const tenantLogoPath = () => path.join(app.getPath('userData'), 'tenant-logo.txt');
+function readCachedLogo() {
+  try {
+    return fs.readFileSync(tenantLogoPath(), 'utf8');
+  } catch {
+    return null;
+  }
+}
+
 // ---------------- Animación Fade-in ----------------
 function fadeIn(window, duration = 300, step = 0.08) {
   let opacity = 0;
@@ -65,6 +77,19 @@ ipcMain.handle('imprimir-html', async (_, datos) => {
 
 ipcMain.handle('app:getVersion', () => app.getVersion());
 
+// Cachea el logo del tenant (dataURL) para el splash del próximo arranque. Escribe solo si cambió.
+ipcMain.handle('tenant:cacheLogo', (_, dataUrl) => {
+  try {
+    if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/')) return false;
+    if (readCachedLogo() === dataUrl) return true;
+    fs.writeFileSync(tenantLogoPath(), dataUrl);
+    return true;
+  } catch (err) {
+    log.error('[Splash] No se pudo cachear el logo del tenant:', err);
+    return false;
+  }
+});
+
 ipcMain.on('update:check', () => {
   log.info('[Updater] Check manual solicitado');
   autoUpdater.checkForUpdates();
@@ -92,6 +117,16 @@ function createWindow() {
   });
 
   splashWindow.loadFile(path.join(__dirname, 'splash.html'));
+
+  // Inyectar el logo del tenant cacheado (si hay) una vez que el splash cargó.
+  splashWindow.webContents.on('did-finish-load', () => {
+    const logo = readCachedLogo();
+    if (logo) {
+      splashWindow?.webContents
+        .executeJavaScript(`window.__setLogo(${JSON.stringify(logo)})`)
+        .catch(() => {});
+    }
+  });
 
   mainWindow = new BrowserWindow({
     width: 1200,

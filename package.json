@@ -18,7 +18,7 @@
     "electron-builder": "^24.4.0"
   },
   "build": {
-    "appId": "com.TMBC.controlcubiertas",
+    "appId": "com.controlcubiertas.app",
     "productName": "Control Cubiertas",
     "publish": {
       "provider": "github",
@@ -30,8 +30,7 @@
       "node_modules/**/*",
       "package.json",
       "!../backend",
-      "splash.html",
-      "TMBC.png"
+      "splash.html"
     ],
     "directories": {
       "output": "dist",
