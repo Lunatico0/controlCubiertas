@@ -1,7 +1,7 @@
 {
   "name": "controlcubiertas",
   "version": "2.0.0",
-  "description": "Aplicación de escritorio para ControlCubiertas",
+  "description": "Aplicación de escritorio para TireOps",
   "author": "Patricio Pittana",
   "main": "desktop/main.js",
   "scripts": {
@@ -18,8 +18,8 @@
     "electron-builder": "^24.4.0"
   },
   "build": {
-    "appId": "com.controlcubiertas.app",
-    "productName": "Control Cubiertas",
+    "appId": "com.tireops.app",
+    "productName": "TireOps",
     "publish": {
       "provider": "github",
       "owner": "Lunatico0",
@@ -38,9 +38,9 @@
     },
     "asar": true,
     "win": {
-      "icon": "desktop/TMBC.ico",
+      "icon": "desktop/icon.ico",
       "target": "nsis",
-      "artifactName": "Control-Cubiertas-Setup-${version}.${ext}"
+      "artifactName": "TireOps-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,

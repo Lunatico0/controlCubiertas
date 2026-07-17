@@ -13,7 +13,7 @@ let splashWindow;
 
 // Logo del tenant cacheado para el splash (dataURL). Se escribe tras el login
 // (IPC tenant:cacheLogo) y se lee en el próximo arranque. Sin cache (primer inicio
-// o tenant sin logo) → el splash muestra la marca Control Cubiertas.
+// o tenant sin logo) → el splash muestra la marca TireOps.
 const tenantLogoPath = () => path.join(app.getPath('userData'), 'tenant-logo.txt');
 function readCachedLogo() {
   try {
@@ -132,7 +132,7 @@ function createWindow() {
     width: 1200,
     height: 800,
     show: false,
-    icon: path.join(__dirname, 'build', 'TMBC.ico'),
+    icon: path.join(__dirname, 'build', 'TireOps.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

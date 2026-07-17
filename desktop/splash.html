@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Control Cubiertas</title>
+  <title>TireOps</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -21,26 +21,22 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 22px;
-      padding: 40px 52px;
+      gap: 24px;
+      padding: 44px 56px;
       background: #0f1216;
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 24px;
       box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
     }
 
-    /* Bloque de marca por defecto (Control Cubiertas) */
-    .brand { display: flex; align-items: center; gap: 14px; }
-    .brand svg { width: 52px; height: 52px; }
-    .brand .name { font-weight: 700; letter-spacing: .02em; line-height: .98; }
-    .brand .name .l1 { color: #f5f6f7; font-size: 20px; }
-    .brand .name .l2 { color: #C4ED2B; font-size: 20px; }
+    /* Marca por defecto (TireOps) — logo+nombre, variante para fondo oscuro */
+    #brandDefault { width: 260px; max-width: 72vw; height: auto; }
 
-    /* Logo del tenant (cacheado) — reemplaza al bloque de marca cuando existe */
-    #tenantLogo { display: none; max-width: 200px; max-height: 128px; object-fit: contain; }
+    /* Logo del tenant (cacheado) — reemplaza al de TireOps cuando existe */
+    #tenantLogo { display: none; max-width: 220px; max-height: 128px; object-fit: contain; }
 
     .loader {
-      width: 160px;
+      width: 180px;
       height: 6px;
       background: rgba(255, 255, 255, 0.08);
       border-radius: 5px;
@@ -52,7 +48,7 @@
       position: absolute;
       width: 30%;
       height: 100%;
-      background: #C4ED2B;
+      background: #bddd2f;
       animation: load 1.4s infinite;
       border-radius: 5px;
     }
@@ -66,19 +62,13 @@
 <body>
   <div class="card">
     <img id="tenantLogo" alt="" />
-    <div class="brand" id="brandDefault">
-      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="20" cy="20" r="18" stroke="#C4ED2B" stroke-width="3.4" stroke-dasharray="78 22" stroke-linecap="round" transform="rotate(-50 20 20)"/>
-        <circle cx="20" cy="20" r="6.4" stroke="#C4ED2B" stroke-width="3.4"/>
-      </svg>
-      <div class="name"><div class="l1">CONTROL</div><div class="l2">CUBIERTAS</div></div>
-    </div>
+    <img id="brandDefault" src="./TireOpsDark.svg" alt="TireOps" />
     <div class="loader"></div>
   </div>
 
   <script>
     // main.js inyecta el logo cacheado del tenant (dataURL) tras did-finish-load.
-    // Sin logo (primer arranque o tenant sin logo) → queda el bloque de marca Control Cubiertas.
+    // Sin logo (primer arranque o tenant sin logo) → queda la marca TireOps.
     window.__setLogo = function (dataUrl) {
       if (!dataUrl) return;
       var img = document.getElementById("tenantLogo");
