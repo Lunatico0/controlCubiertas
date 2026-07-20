@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkForUpdates: () => ipcRenderer.send('update:check'),
   downloadUpdate: () => ipcRenderer.send('update:download'),
   installUpdate: () => ipcRenderer.send('update:install'),
+  installOnNextLaunch: () => ipcRenderer.send('update:install-later'),
+  listReleases: () => ipcRenderer.invoke('update:listReleases'),
   getVersion: () => ipcRenderer.invoke('app:getVersion'),
   cacheTenantLogo: (dataUrl) => ipcRenderer.invoke('tenant:cacheLogo', dataUrl),
 

@@ -1,0 +1,6 @@
+# Feed de actualización para PROBAR el updater en dev (no empaquetado).
+# Solo se usa cuando se corre con TEST_UPDATER=1 (autoUpdater.forceDevUpdateConfig).
+# En la app empaquetada, electron-builder genera su propio app-update.yml y este archivo se ignora.
+provider: github
+owner: Lunatico0
+repo: controlCubiertas

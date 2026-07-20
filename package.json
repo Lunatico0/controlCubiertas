@@ -8,7 +8,7 @@
     "build-react": "cd frontend && npm run build:electron",
     "build-desktop": "electron-builder",
     "build": "npm run build-react && npm run build-desktop",
-    "electron:start": "electron desktop/main.js",
+    "electron:start": "electron .",
     "electron:build": "electron-builder",
     "electron": "electron ."
   },

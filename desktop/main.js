@@ -2,7 +2,20 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
+const https = require('https');
 const log = require('electron-log');
+const pkg = require('../package.json');
+
+// Versión REAL de la app (2.0.0), tomada del package.json — NO de app.getVersion(), que en dev
+// lanzado como `electron desktop/main.js` devuelve la versión de Electron. En la app empaquetada
+// ambas coinciden. Se usa para mostrar la versión y comparar contra los releases.
+const APP_VERSION = pkg.version;
+
+// Modo de prueba del updater en dev (opt-in): TEST_UPDATER=1 hace que electron-updater consulte
+// GitHub aunque no esté empaquetado (forceDevUpdateConfig + dev-app-update.yml). UPDATER_FAKE_VERSION
+// permite fingir una versión instalada más baja para ver el flujo "hay actualización" contra un
+// release real. Nunca aplica en la app empaquetada.
+const DEV_UPDATER_TEST = process.env.TEST_UPDATER === '1';
 
 log.transports.file.resolvePath = () => path.join(app.getPath('userData'), 'update.log');
 autoUpdater.logger = log;
@@ -75,7 +88,7 @@ ipcMain.handle('imprimir-html', async (_, datos) => {
   }
 });
 
-ipcMain.handle('app:getVersion', () => app.getVersion());
+ipcMain.handle('app:getVersion', () => APP_VERSION);
 
 // Cachea el logo del tenant (dataURL) para el splash del próximo arranque. Escribe solo si cambió.
 ipcMain.handle('tenant:cacheLogo', (_, dataUrl) => {
@@ -91,7 +104,15 @@ ipcMain.handle('tenant:cacheLogo', (_, dataUrl) => {
 });
 
 ipcMain.on('update:check', () => {
-  log.info('[Updater] Check manual solicitado');
+  // En dev (no empaquetado) electron-updater no tiene feed (app-update.yml) y tira error.
+  // Respondemos "sin actualización" para que la UI muestre el estado correcto sin ruido —
+  // salvo en modo de prueba (TEST_UPDATER=1), donde sí consultamos GitHub.
+  if (!app.isPackaged && !DEV_UPDATER_TEST) {
+    log.info('[Updater] Check en dev → no-op (sin feed)');
+    mainWindow?.webContents.send('update:not-available');
+    return;
+  }
+  log.info('[Updater] Check solicitado');
   autoUpdater.checkForUpdates();
 });
 
@@ -99,9 +120,64 @@ ipcMain.on('update:download', () => {
   autoUpdater.downloadUpdate();
 });
 
+// Instalar YA y reiniciar la app con la nueva versión.
 ipcMain.on('update:install', () => {
-  log.info('[Updater] Usuario aceptó instalar');
-  autoUpdater.quitAndInstall();
+  log.info('[Updater] Instalar y reiniciar');
+  autoUpdater.quitAndInstall(false, true);
+});
+
+// Instalar en el próximo inicio: la actualización ya descargada se instala sola al cerrar la
+// app (autoInstallOnAppQuit). No hacemos quitAndInstall: solo confirmamos.
+ipcMain.on('update:install-later', () => {
+  autoUpdater.autoInstallOnAppQuit = true;
+  log.info('[Updater] Instalación programada para el próximo cierre');
+});
+
+// Lista de releases MÁS NUEVOS que el instalado (changelog), desde la GitHub Releases API.
+// electron-updater solo conoce la última; para mostrar todas las versiones intermedias con sus
+// notas usamos la API pública (el repo de releases es público → sin token).
+const semverParts = (t) => {
+  const m = String(t || '').match(/(\d+)\.(\d+)\.(\d+)/);
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+};
+const cmpVer = (a, b) => {
+  const A = semverParts(a) || [0, 0, 0], B = semverParts(b) || [0, 0, 0];
+  for (let i = 0; i < 3; i++) { if (A[i] !== B[i]) return A[i] - B[i]; }
+  return 0;
+};
+function fetchJson(url, redirects = 0) {
+  return new Promise((resolve, reject) => {
+    https.get(url, { headers: { 'User-Agent': 'TireOps-Updater', Accept: 'application/vnd.github+json' } }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && redirects < 5) {
+        res.resume();
+        return fetchJson(res.headers.location, redirects + 1).then(resolve, reject);
+      }
+      if (res.statusCode !== 200) { res.resume(); return reject(new Error('HTTP ' + res.statusCode)); }
+      let data = '';
+      res.on('data', (c) => { data += c; });
+      res.on('end', () => { try { resolve(JSON.parse(data)); } catch (e) { reject(e); } });
+    }).on('error', reject);
+  });
+}
+ipcMain.handle('update:listReleases', async () => {
+  try {
+    const { owner, repo } = (pkg.build || {}).publish || {};
+    const url = `https://api.github.com/repos/${owner}/${repo}/releases`;
+    const releases = await fetchJson(url);
+    const current = process.env.UPDATER_FAKE_VERSION || APP_VERSION;
+    return (Array.isArray(releases) ? releases : [])
+      .filter((r) => !r.draft && !r.prerelease && semverParts(r.tag_name || r.name))
+      .map((r) => {
+        const version = semverParts(r.tag_name || r.name).join('.');
+        const exe = (r.assets || []).find((a) => /\.exe$/i.test(a.name || ''));
+        return { version, name: r.name || version, notes: r.body || '', date: r.published_at, size: exe?.size || 0 };
+      })
+      .filter((r) => cmpVer(r.version, current) > 0)
+      .sort((a, b) => cmpVer(a.version, b.version));
+  } catch (err) {
+    log.error('[Updater] listReleases error:', err.message);
+    return [];
+  }
 });
 
 // ---------------- Ventana Principal ----------------
@@ -199,7 +275,18 @@ function setupAutoUpdater() {
 
 // ---------------- App Ready ----------------
 app.whenReady().then(() => {
-  autoUpdater.autoDownload = false;
+  autoUpdater.autoDownload = false; // el usuario dispara la descarga desde el modal
+  autoUpdater.autoInstallOnAppQuit = true; // "instalar en el próximo inicio" = instalar al cerrar
+
+  // Modo de prueba en dev: forzar el feed de GitHub aunque no esté empaquetado, para poder
+  // probar el updater con `electron .`. UPDATER_FAKE_VERSION finge una versión instalada más baja.
+  if (!app.isPackaged && DEV_UPDATER_TEST) {
+    autoUpdater.forceDevUpdateConfig = true;
+    autoUpdater.updateConfigPath = path.join(__dirname, '..', 'dev-app-update.yml');
+    if (process.env.UPDATER_FAKE_VERSION) autoUpdater.currentVersion = process.env.UPDATER_FAKE_VERSION;
+    log.info(`[Updater] Modo de prueba activo. Versión fingida: ${process.env.UPDATER_FAKE_VERSION || APP_VERSION}`);
+  }
+
   createWindow();
   setupAutoUpdater();
 
