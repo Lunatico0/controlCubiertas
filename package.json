@@ -1,6 +1,6 @@
 {
   "name": "controlcubiertas",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Aplicación de escritorio para TireOps",
   "author": "Patricio Pittana",
   "main": "desktop/main.js",
