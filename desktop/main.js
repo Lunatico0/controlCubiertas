@@ -171,7 +171,12 @@ function fetchJson(url, redirects = 0) {
 }
 ipcMain.handle('update:listReleases', async () => {
   try {
-    const { owner, repo } = (pkg.build || {}).publish || {};
+    // OJO: electron-builder ELIMINA el campo `build` del package.json empaquetado, así que en la
+    // app instalada `pkg.build.publish` es undefined (la URL quedaba repos/undefined/undefined →
+    // 404 → lista vacía → el modal decía "estás al día" con el bip prendido). El repo es público
+    // y fijo, así que lo hardcodeamos.
+    const owner = 'Lunatico0';
+    const repo = 'controlCubiertas';
     const url = `https://api.github.com/repos/${owner}/${repo}/releases`;
     const releases = await fetchJson(url);
     const current = process.env.UPDATER_FAKE_VERSION || APP_VERSION;
