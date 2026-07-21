@@ -10,6 +10,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getVersion: () => ipcRenderer.invoke('app:getVersion'),
   cacheTenantLogo: (dataUrl) => ipcRenderer.invoke('tenant:cacheLogo', dataUrl),
 
+  // Controles de la ventana (titlebar frameless custom).
+  minimizeWindow: () => ipcRenderer.send('win:minimize'),
+  maximizeWindow: () => ipcRenderer.send('win:maximize'),
+  closeWindow: () => ipcRenderer.send('win:close'),
+  isWindowMaximized: () => ipcRenderer.invoke('win:isMaximized'),
+  onMaximizeChange: (callback) => ipcRenderer.on('win:maximized', callback),
+
   onUpdateChecking: (callback) => ipcRenderer.on('update:checking', callback),
   onUpdateAvailable: (callback) => ipcRenderer.on('update:available', callback),
   onUpdateNotAvailable: (callback) => ipcRenderer.on('update:not-available', callback),

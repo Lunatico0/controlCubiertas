@@ -90,6 +90,16 @@ ipcMain.handle('imprimir-html', async (_, datos) => {
 
 ipcMain.handle('app:getVersion', () => APP_VERSION);
 
+// Controles de la ventana para la titlebar frameless custom.
+ipcMain.on('win:minimize', () => mainWindow?.minimize());
+ipcMain.on('win:maximize', () => {
+  if (!mainWindow) return;
+  if (mainWindow.isMaximized()) mainWindow.unmaximize();
+  else mainWindow.maximize();
+});
+ipcMain.on('win:close', () => mainWindow?.close());
+ipcMain.handle('win:isMaximized', () => !!mainWindow?.isMaximized());
+
 // Cachea el logo del tenant (dataURL) para el splash del próximo arranque. Escribe solo si cambió.
 ipcMain.handle('tenant:cacheLogo', (_, dataUrl) => {
   try {
@@ -208,6 +218,7 @@ function createWindow() {
     width: 1200,
     height: 800,
     show: false,
+    frame: false, // titlebar custom (frameless) — ver components/Layout/TitleBar.jsx + IPC win:*
     icon: path.join(__dirname, 'build', 'TireOps.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -239,6 +250,10 @@ function createWindow() {
   mainWindow.webContents.on('did-finish-load', () => {
     log.info('[Electron] Carga de ventana completa');
   });
+
+  // Estado de maximizado → la titlebar alterna el ícono maximizar/restaurar.
+  mainWindow.on('maximize', () => mainWindow?.webContents.send('win:maximized', true));
+  mainWindow.on('unmaximize', () => mainWindow?.webContents.send('win:maximized', false));
 
   mainWindow.on('closed', () => {
     mainWindow = null;
