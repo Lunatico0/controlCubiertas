@@ -45,7 +45,10 @@
     "nsis": {
       "oneClick": false,
       "perMachine": true,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "installerSidebar": "desktop/installerSidebar.bmp",
+      "installerHeader": "desktop/installerHeader.bmp",
+      "include": "desktop/installer.nsh"
     }
   },
   "dependencies": {
