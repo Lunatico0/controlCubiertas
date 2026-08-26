@@ -33,6 +33,8 @@
 ```bash
 # frontend (desde frontend/)
 npm run dev            # Vite dev server
+npm test               # vitest + jsdom + testing-library (config en vitest.config.js)
+npm run test:watch     # vitest en watch
 npm run build:web      # build web (Vercel)
 npm run build:electron # build para Electron, sale a ../desktop/build
 
@@ -49,9 +51,11 @@ Setup: `.env` en `backend/` con `CONTROL_PLANE_URI` y `MONGO_URI`; `.env` en `fr
 ## 4. Reglas del repo
 
 - **TDD estricto**: test primero, RED → GREEN. Sin excepción.
-- **El suite de tests es hermético.** Los 37 archivos que tocan DB usan `mongodb-memory-server`; ninguno lee `MONGO_URI` ni `CONTROL_PLANE_URI`. Verificado el 2026-08-25 corriendo el suite completo con las dos variables apuntando a un host inexistente: 169 pasan, 1 skipped. Se puede correr entero sin miedo.
+- **El suite de tests del backend es hermético.** Los 37 archivos que tocan DB usan `mongodb-memory-server`; ninguno lee `MONGO_URI` ni `CONTROL_PLANE_URI`. Verificado el 2026-08-25 corriendo el suite completo con las dos variables apuntando a un host inexistente: 169 pasan, 1 skipped. Se puede correr entero sin miedo.
+- **El frontend tiene tests desde el 2026-08-26**: vitest + jsdom + testing-library, en `frontend/src/tests/`. La config vive en `vitest.config.js` SEPARADA de `vite.config.js` a propósito: `vite build` no lee ese archivo, así que el build de producción nunca importa vitest. Los alias se heredan por `mergeConfig`, no hay que duplicarlos.
 - Frontend: imports por alias (`@/`, `@components`, `@context`, `@constants`, `@utils`, `@hooks`, `@api`), nunca rutas relativas largas.
 - **GOTCHA de mayúsculas**: existen `components/UI/` y `components/common/` con nombres solapados (`Modal.jsx` en ambos). Windows es case-insensitive y Linux no: un import con el case equivocado pasa en local y **rompe el build de Vercel**. Verificar el case exacto antes de importar.
+- **GOTCHA de `ref` en componentes propios**: si un componente de input va a recibir `{...register(...)}` de react-hook-form, TIENE que estar envuelto en `forwardRef` y pasarle el `ref` al control. En React 18 `ref` no viaja dentro de props: sin eso, RHF no ve el campo y el formulario queda mudo en los dos sentidos (no lee lo tipeado ni se puebla con `reset()`), sin un solo error visible. Le pasó a `FloatingField` y se llevó puestos tres formularios, incluido el cambio de contraseña. Cubierto por `src/tests/FloatingField.test.jsx`.
 - Backend: errores vía `utils/httpError.js`, controladores envueltos en `utils/asyncHandler.js`. No tirar `res.status().json()` a mano en controladores nuevos.
 - `frontend/src/components/` sigue la convención `common/` para lo compartido. No duplicar componentes ya existentes ahí.
 
