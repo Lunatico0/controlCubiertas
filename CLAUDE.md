@@ -48,6 +48,14 @@ npm run build          # build-react + electron-builder
 
 Setup: `.env` en `backend/` con `CONTROL_PLANE_URI` y `MONGO_URI`; `.env` en `frontend/` con `VITE_API_URL`. `VITE_SENTRY_DSN` es opcional (sin DSN, Sentry queda apagado). Verificar conectividad con `node scripts/check-env.js`.
 
+Variables opcionales del backend (seguridad HTTP):
+
+| Variable | Default | Qué hace |
+|----------|---------|----------|
+| `CORS_ORIGINS` | *(vacío)* | Lista de orígenes permitidos separados por coma. **Vacío = cualquier origen**, que es el comportamiento histórico. Setearla en Vercel es lo que cierra CORS, sin tocar código. Las requests SIN cabecera `Origin` pasan siempre: es el caso del desktop, que carga por `file://`. |
+| `LOGIN_RATE_LIMIT` | `10` | Intentos de login FALLIDOS por ventana antes del 429. Los exitosos no consumen cupo. |
+| `LOGIN_RATE_WINDOW_MS` | `900000` | Ventana del límite (15 min). |
+
 ## 4. Reglas del repo
 
 - **TDD estricto**: test primero, RED → GREEN. Sin excepción.
