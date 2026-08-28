@@ -17,7 +17,9 @@ const APP_VERSION = pkg.version;
 // release real. Nunca aplica en la app empaquetada.
 const DEV_UPDATER_TEST = process.env.TEST_UPDATER === '1';
 
-log.transports.file.resolvePath = () => path.join(app.getPath('userData'), 'update.log');
+// resolvePathFn, no resolvePath: el segundo quedó deprecado en electron-log 5 y avisa por
+// consola en cada arranque.
+log.transports.file.resolvePathFn = () => path.join(app.getPath('userData'), 'update.log');
 autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
 
@@ -37,12 +39,23 @@ function readCachedLogo() {
 }
 
 // ---------------- Animación Fade-in ----------------
+// El interval toca la ventana cada ~24ms durante 300ms. Si la ventana se destruye en el medio
+// (el usuario cierra apenas aparece, o el proceso termina), el tick siguiente llama setOpacity
+// sobre un objeto ya destruido: Electron levanta una excepción no capturada y le muestra al
+// usuario un cartel de "A JavaScript error occurred in the main process". Por eso cada tick
+// verifica isDestroyed() y corta, y el interval se limpia también cuando la ventana se cierra.
 function fadeIn(window, duration = 300, step = 0.08) {
+  if (!window || window.isDestroyed()) return;
+
   let opacity = 0;
   window.setOpacity(opacity);
   window.show();
 
   const interval = setInterval(() => {
+    if (!window || window.isDestroyed()) {
+      clearInterval(interval);
+      return;
+    }
     opacity += step;
     if (opacity >= 1) {
       opacity = 1;
@@ -50,6 +63,10 @@ function fadeIn(window, duration = 300, step = 0.08) {
     }
     window.setOpacity(opacity);
   }, duration * step);
+
+  // Red de seguridad: 'closed' llega antes de que el objeto quede inutilizable, así que el
+  // interval se corta ahí en vez de esperar al próximo tick.
+  window.once('closed', () => clearInterval(interval));
 }
 
 // ---------------- Funciones IPC ----------------
