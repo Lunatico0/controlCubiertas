@@ -41,7 +41,12 @@
     "win": {
       "icon": "desktop/icon.ico",
       "target": "nsis",
-      "artifactName": "TireOps-Setup-${version}.${ext}"
+      "artifactName": "TireOps-Setup-${version}.${ext}",
+      "signingHashAlgorithms": [
+        "sha256"
+      ],
+      "rfc3161TimeStampServer": "http://timestamp.digicert.com",
+      "publisherName": "Patricio Pittana"
     },
     "nsis": {
       "oneClick": false,
@@ -55,5 +60,7 @@
   "dependencies": {
     "electron-log": "^5.4.1",
     "electron-updater": "^6.8.9"
-  }
+  },
+  "license": "UNLICENSED",
+  "private": true
 }

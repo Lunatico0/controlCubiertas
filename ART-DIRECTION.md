@@ -1,4 +1,4 @@
-# 🎨 Dirección de arte — ControlCubiertas (panel + app)
+# 🎨 Dirección de arte — TireOps (panel + app)
 
 > Documento para Claude Design. Define la identidad visual: **paleta, tipografía, íconos y tratamiento de superficies**. Dirección elegida: **"Logística limpia con carácter"** — base clara y profesional, con un primario fuerte del rubro (no el azul genérico) y tipografía con personalidad. Aplica al panel de administración Y a la app operativa (misma familia).
 >
@@ -72,3 +72,8 @@
 ## 9. Nota
 
 Esta es la **identidad del producto**, no un tema del panel suelto: aplicarla también, de a poco, a la app operativa para que sean la misma familia. **No copiar Vela1** ni el look genérico de IA. Carácter propio, del rubro.
+
+---
+
+> El producto se llama **TireOps** desde la versión 2.0.0. El repositorio conserva el nombre
+> `controlCubiertas` por historia.

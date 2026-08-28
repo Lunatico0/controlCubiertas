@@ -1,4 +1,4 @@
-# 🐞 Bugs a resolver — ControlCubiertas
+# 🐞 Bugs a resolver — TireOps
 
 > Detectados en el E2E del 2026-06-17 (Chrome DevTools MCP). La app funciona end-to-end y persiste en Atlas; estos son problemas de la **capa cliente**, no de datos.
 

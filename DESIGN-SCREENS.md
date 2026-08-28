@@ -1,4 +1,4 @@
-# 🧭 Especificación funcional de vistas — ControlCubiertas
+# 🧭 Especificación funcional de vistas — TireOps
 
 > Inventario de TODAS las vistas que conlleva la app, con su propósito, contenido (datos), acciones y quién accede. **Esto define el QUÉ, no el CÓMO.** No incluye nada de estilo, layout, colores, tipografía ni elección de componentes visuales: esas decisiones son del diseñador.
 >
@@ -216,3 +216,8 @@ Regla transversal: cada usuario solo ve y opera datos de **su propia empresa** (
 ---
 
 _Base: dominio validado en una corrida E2E real de la app + el roadmap multi-tenant. Las vistas de Administración corresponden a fases futuras del roadmap; el resto ya existe funcionalmente hoy._
+
+---
+
+> El producto se llama **TireOps** desde la versión 2.0.0. El repositorio conserva el nombre
+> `controlCubiertas` por historia.

@@ -8,15 +8,15 @@
 
 ## 1. Qué es
 
-Un **panel de administración** donde el responsable de cada empresa cliente gestiona su cuenta de ControlCubiertas y supervisa su flota — **separado de la operación diaria** (cargar/asignar cubiertas).
+Un **panel de administración** donde el responsable de cada empresa cliente gestiona su cuenta de TireOps y supervisa su flota — **separado de la operación diaria** (cargar/asignar cubiertas).
 
-**Analogía** (concepto, no estética): así como `velapos-merchant` administra y supervisa la operación de VelaPOS, este panel administra y supervisa la instancia de ControlCubiertas de un cliente. **Pero mucho más simple**: ControlCubiertas no tiene catálogo, checkout, clientes finales ni suscripciones — el dominio es gestión de activos (cubiertas) de una flota.
+**Analogía** (concepto, no estética): así como `velapos-merchant` administra y supervisa la operación de VelaPOS, este panel administra y supervisa la instancia de TireOps de un cliente. **Pero mucho más simple**: TireOps no tiene catálogo, checkout, clientes finales ni suscripciones — el dominio es gestión de activos (cubiertas) de una flota.
 
-Distinción clave respecto a esos portales: en ControlCubiertas **no hay una "app de cliente final" separada**. La app ES la operación que usa el equipo. El panel **administra la cuenta y resume la operación**, no la reemplaza.
+Distinción clave respecto a esos portales: en TireOps **no hay una "app de cliente final" separada**. La app ES la operación que usa el equipo. El panel **administra la cuenta y resume la operación**, no la reemplaza.
 
 ## 2. Para qué se usa
 
-- **Administrar el acceso**: quién del equipo puede usar ControlCubiertas y con qué permisos.
+- **Administrar el acceso**: quién del equipo puede usar TireOps y con qué permisos.
 - **Configurar la empresa**: datos de la organización y preferencias que aplican a toda la operación.
 - **Supervisar la flota de un vistazo**: panorama del inventario y señales que requieren atención (sin entrar al detalle operativo).
 
@@ -34,7 +34,7 @@ Distinción clave respecto a esos portales: en ControlCubiertas **no hay una "ap
 - **Acciones:** navegar a las secciones; abrir la app operativa.
 
 ### 4.2 Usuarios (gestión del equipo)
-- **Propósito:** administrar quién accede a ControlCubiertas dentro de la empresa.
+- **Propósito:** administrar quién accede a TireOps dentro de la empresa.
 - **Contenido:** lista de usuarios con email, nombre, rol (tenant-admin / operativo) y estado (activo/inactivo).
 - **Acciones:** crear usuario (email + nombre + rol), editar (datos y rol), activar/desactivar, restablecer acceso/contraseña.
 - **Reglas:** sin registro público — los crea el tenant-admin. No puede desactivarse a sí mismo si es el único admin.
@@ -55,7 +55,7 @@ Distinción clave respecto a esos portales: en ControlCubiertas **no hay una "ap
 
 ## 6. Relación con la app operativa
 
-| | App operativa (ControlCubiertas) | Panel de Administración |
+| | App operativa (TireOps) | Panel de Administración |
 |---|---|---|
 | Para qué | Operar el día a día (cubiertas, vehículos, comprobantes) | Administrar la cuenta + supervisar |
 | Quién | Operativos y admin | Solo tenant-admin |
@@ -78,11 +78,16 @@ El tenant-admin ve un acceso al panel; el operativo no. El panel **lee** datos d
 
 ## 9. Decisiones de producto abiertas (definir antes de diseñar)
 
-- [ ] **¿App separada o área dentro de la app?** ¿El panel es un sitio aparte (como velapos-merchant) o una sección protegida dentro de ControlCubiertas? _(Recomendación: empezar como área protegida; separar a futuro si crece.)_
+- [ ] **¿App separada o área dentro de la app?** ¿El panel es un sitio aparte (como velapos-merchant) o una sección protegida dentro de TireOps? _(Recomendación: empezar como área protegida; separar a futuro si crece.)_
 - [ ] **¿El Resumen incluye reportes?** ¿Solo panorama, o también reportes (km recorridos, historial agregado, exportar)?
 - [ ] **¿Qué preferencias son de empresa vs de usuario?** Definir cuáles fija el admin para todos y cuáles quedan personales.
 - [ ] **¿Roles internos?** ¿Alcanza con tenant-admin / operativo, o hace falta un nivel intermedio (supervisor)?
 
 ## 10. Nota para Claude Design
 
-El diseño visual, la disposición y la maquetación son tuyos. Pedido del dueño: **identidad propia y moderna, con personalidad** — NO el estilo de Vela1, y NO el look genérico que "grita hecho con IA". Mantener coherencia con la app operativa de ControlCubiertas (misma familia visual), pero con criterio y carácter.
+El diseño visual, la disposición y la maquetación son tuyos. Pedido del dueño: **identidad propia y moderna, con personalidad** — NO el estilo de Vela1, y NO el look genérico que "grita hecho con IA". Mantener coherencia con la app operativa de TireOps (misma familia visual), pero con criterio y carácter.
+
+---
+
+> El producto se llama **TireOps** desde la versión 2.0.0. El repositorio conserva el nombre
+> `controlCubiertas` por historia.

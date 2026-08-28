@@ -27,3 +27,4 @@ latest.yml
 
 # Artefactos de Playwright MCP (snapshots/console de verificación)
 /.playwright-mcp/
+t95-login-ff.png

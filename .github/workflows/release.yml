@@ -82,14 +82,40 @@ jobs:
       - name: Build del renderer
         run: npm run build-react
 
+      # FIRMA DE CÓDIGO (Authenticode).
+      #
+      # Sin certificado el instalador sale SIN FIRMAR y SmartScreen lo marca "Editor
+      # desconocido", que entrena al usuario a hacer click-through en las advertencias. El
+      # SHA512 del latest.yml y el SHA256SUMS.txt dan INTEGRIDAD (la descarga no se corrompió
+      # ni la cambió un intermediario) pero no AUTENTICIDAD (que el binario lo hicimos
+      # nosotros): los genera el mismo pipeline que arma el .exe.
+      #
+      # Para activarla no hay que tocar código: alcanza con cargar dos secretos en el repo,
+      # CSC_LINK (el .pfx en base64) y CSC_KEY_PASSWORD. electron-builder omite la firma
+      # cuando CSC_LINK no está, así que este workflow funciona igual con y sin certificado.
+      # El aviso de abajo deja el estado a la vista en cada corrida.
+      - name: Estado de la firma de código
+        shell: bash
+        run: |
+          if [ -n "${{ secrets.CSC_LINK }}" ]; then
+            echo "::notice::El instalador se va a FIRMAR con el certificado del repo."
+          else
+            echo "::warning::Sin CSC_LINK: el instalador sale SIN FIRMAR y SmartScreen lo va a marcar como 'Editor desconocido'. Cargá CSC_LINK y CSC_KEY_PASSWORD para firmarlo."
+          fi
+
       - name: Instalador
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
         run: npx electron-builder --win --publish never
 
       - name: Instalador y publicación del release
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
         run: npx electron-builder --win --publish always
 
       # SHA256 de todo lo publicable. El latest.yml de electron-updater ya trae un sha512 que

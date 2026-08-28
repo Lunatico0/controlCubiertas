@@ -98,9 +98,14 @@ async function correr() {
   if (faltantes.length === 0) ok(`window.electronAPI expone los ${API_ESPERADA.length} métodos del preload`)
   else mal('el preload no expuso todo', faltantes.join(', '))
 
-  // El aviso de CSP de Electron es un hallazgo real (la app no declara Content-Security-Policy)
-  // pero no es una regresión del proceso principal, que es lo que mide este smoke. Va como card
-  // aparte; acá se filtra junto al ruido de DevTools.
+  // El aviso de CSP de Electron SÍ cuenta: el build inyecta la Content-Security-Policy como
+  // <meta> (frontend/vite.config.js) porque en file:// no hay respuesta HTTP donde ponerla como
+  // cabecera. Si vuelve el aviso es que el meta se perdió, y el renderer quedó corriendo sin
+  // ninguna restricción de origen. El resto de los Security Warning de Electron sí es ruido.
+  const avisoCSP = errores.find((m) => /Content Security Policy/i.test(m))
+  if (avisoCSP) mal('el renderer no declara Content-Security-Policy', avisoCSP.slice(0, 160))
+  else ok('el renderer declara Content-Security-Policy')
+
   const errsReales = errores.filter((m) => !/DevTools|Autofill|source map|Electron Security Warning/i.test(m))
   if (errsReales.length) mal('errores en la consola del renderer', errsReales.slice(0, 3).join(' | '))
   else ok('sin errores en la consola del renderer')
