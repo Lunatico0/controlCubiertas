@@ -15,12 +15,12 @@ const RAIZ = path.join(__dirname, '..')
 const INDEX = path.join(RAIZ, 'desktop/build/index.html')
 
 // Los canales que el preload expone y que, si desaparecen, dejan la app inutilizable.
-const CANALES_INVOKE = ['imprimir-html', 'app:getVersion', 'win:isMaximized', 'tenant:cacheLogo', 'update:listReleases']
+const CANALES_INVOKE = ['app:getVersion', 'win:isMaximized', 'tenant:cacheLogo', 'update:listReleases']
 const CANALES_SEND = ['update:check', 'update:download', 'update:install', 'update:install-later', 'win:minimize', 'win:maximize', 'win:close']
 
 // Métodos que el renderer espera encontrar en window.electronAPI (ver desktop/preload.js).
 const API_ESPERADA = [
-  'imprimirHTML', 'checkForUpdates', 'downloadUpdate', 'installUpdate', 'installOnNextLaunch',
+  'checkForUpdates', 'downloadUpdate', 'installUpdate', 'installOnNextLaunch',
   'listReleases', 'getVersion', 'cacheTenantLogo',
   'minimizeWindow', 'maximizeWindow', 'closeWindow', 'isWindowMaximized', 'onMaximizeChange',
   'onUpdateChecking', 'onUpdateAvailable', 'onUpdateNotAvailable', 'onUpdateProgress',
@@ -66,13 +66,26 @@ async function correr() {
     else mal(`falta ipcMain.on("${canal}")`)
   }
 
-  // 3. Una ventana con el MISMO preload carga el build y expone la API al renderer.
+  // 2b. Guards del proceso principal que NO tienen API de lectura en runtime: Electron no
+  // expone forma de preguntar si hay un setWindowOpenHandler registrado ni de leer de vuelta
+  // el sandbox de una ventana ya creada. Se verifican sobre el fuente, que es lo único
+  // disponible, y están acá para que un refactor no se los lleve en silencio (t44, t45).
+  const mainSrc = require('fs').readFileSync(path.join(RAIZ, 'desktop/main.js'), 'utf8')
+  if (/setWindowOpenHandler/.test(mainSrc)) ok('los links externos tienen guard de apertura (setWindowOpenHandler)')
+  else mal('falta setWindowOpenHandler: los links target=_blank quedan inertes')
+  if (/sandbox:\s*true/.test(mainSrc)) ok('la ventana principal declara sandbox: true')
+  else mal('la ventana principal no declara sandbox explícito')
+
+  // 3. Una ventana con el MISMO preload — y CON SANDBOX, como la real — carga el build y
+  // expone la API al renderer. Que el preload siga funcionando bajo sandbox es justo el
+  // riesgo de declararlo: ahí adentro `require` está limitado a un subconjunto de módulos.
   const win = new BrowserWindow({
     show: false,
     webPreferences: {
       preload: path.join(RAIZ, 'desktop/preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
     },
   })
 

@@ -116,7 +116,7 @@ npm run check:bundle  # peso de los chunks contra dist/ (requiere haber buildead
 - `build:electron` usa `base: './'` (Electron carga por `file://`) y el build web usa `base: '/'`. Un build cruzado deja rutas rotas y silenciosas.
 - `build:electron` tiene hardcodeada la URL de producción del backend en el script de `package.json`.
 - **Electron no arranca desde la terminal de Claude Code sin desactivar una variable.** El harness setea `ELECTRON_RUN_AS_NODE=1`, y con eso `electron` corre como un Node pelado: `require('electron')` devuelve la ruta al binario y `app` queda `undefined`. Antes de cualquier `electron ...` hay que hacer `unset ELECTRON_RUN_AS_NODE`.
-- El smoke del proceso principal es `npm run smoke` desde la raíz ([scripts/smoke-electron.cjs](scripts/smoke-electron.cjs)). Necesita `desktop/build/` ya generado y verifica main, preload y los 12 canales de IPC. Corre en el CI del raíz con `xvfb-run`.
+- El smoke del proceso principal es `npm run smoke` desde la raíz ([scripts/smoke-electron.cjs](scripts/smoke-electron.cjs)). Necesita `desktop/build/` ya generado y verifica main, preload y los 11 canales de IPC. Corre en el CI del raíz con `xvfb-run`.
 - Los tests del backend necesitan `--experimental-vm-modules` (proyecto ESM puro). Correr `jest` pelado falla.
 - Timezone: las fechas manuales del formulario se serializan a UTC y se corren un día en GMT-3 (Bug 2). Cualquier campo `date` nuevo arrastra el mismo problema.
 

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
@@ -70,40 +70,10 @@ function fadeIn(window, duration = 300, step = 0.08) {
 }
 
 // ---------------- Funciones IPC ----------------
-ipcMain.handle('imprimir-html', async (_, datos) => {
-  const printWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
-    show: false,
-    webPreferences: { contextIsolation: true },
-  });
-
-  const templatePath = path.join(__dirname, 'build', 'print-template.html');
-  const cssPath = path.join(__dirname, 'build', 'print-css.css');
-
-  try {
-    let html = fs.readFileSync(templatePath, 'utf8');
-    const css = fs.readFileSync(cssPath, 'utf8');
-    html = html.replace('</head>', `<style>${css}</style></head>`);
-
-    for (const key in datos) {
-      html = html.replace(new RegExp(`{{${key}}}`, 'g'), datos[key]);
-    }
-
-    await printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
-
-    printWindow.webContents.on('did-finish-load', () => {
-      printWindow.webContents.print({ silent: true, printBackground: true }, () => {
-        log.info('[Electron] Impresión completada');
-        printWindow.close();
-      });
-    });
-
-  } catch (err) {
-    log.error('[Electron] Error en impresión:', err);
-    printWindow.close();
-  }
-});
+// El handler 'imprimir-html' vivió acá hasta que se comprobó que NADIE lo llamaba (t43): el
+// flujo real de impresión es window.print() sobre una ventana hija que arma el renderer
+// (frontend/src/hooks/usePrintEngine.js). Con él se fueron el bridge imprimirHTML del preload
+// y los assets print-template.html / print-css.css, que solo este handler leía.
 
 ipcMain.handle('app:getVersion', () => APP_VERSION);
 
@@ -246,6 +216,9 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      // t45: explícito, no al default de Electron. El preload solo usa contextBridge e
+      // ipcRenderer, que sí están disponibles bajo sandbox; nada de fs ni path ahí.
+      sandbox: true,
       devTools: !app.isPackaged,
     },
   });
@@ -267,6 +240,33 @@ function createWindow() {
   const indexPath = path.join(__dirname, 'build', 'index.html');
   mainWindow.loadFile(indexPath).catch(err => {
     log.error('[Electron] No se pudo cargar el index:', err);
+  });
+
+  // t44: Electron DENIEGA window.open() por default cuando no hay setWindowOpenHandler, así
+  // que los links con target=_blank (los del changelog de las release notes, por ejemplo)
+  // quedaban inertes: el clic no hacía absolutamente nada, ni siquiera un error visible.
+  // Se abren en el navegador del sistema, NO en una ventana de Electron: una página remota
+  // dentro de la app tendría el mismo origen privilegiado que el renderer.
+  const abrirExterno = (url) => {
+    try {
+      // Solo http/https. Sin este chequeo, un file:// o un javascript: inyectado en el
+      // contenido se le pasaría al sistema operativo para que lo ejecute.
+      const { protocol } = new URL(url);
+      if (protocol === 'http:' || protocol === 'https:') shell.openExternal(url);
+      else log.warn('[Electron] Link con protocolo no permitido, ignorado:', protocol);
+    } catch {
+      log.warn('[Electron] Link con URL inválida, ignorado');
+    }
+    return { action: 'deny' };
+  };
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => abrirExterno(url));
+
+  // Misma regla para una navegación de la ventana PRINCIPAL fuera de la app: la app carga por
+  // file:// y no navega a ningún lado; cualquier intento se manda al navegador.
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (url.startsWith('file://')) return;
+    event.preventDefault();
+    abrirExterno(url);
   });
 
   mainWindow.webContents.on('did-finish-load', () => {

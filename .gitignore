@@ -5,7 +5,6 @@ node_modules
 /desktop/dist
 /dist/
 /dist/win-unpacked/
-/dist/win-unpacked/Control Cubiertas.exe
 *.exe
 refactorizacion.txt
 Ejes camiones.txt
