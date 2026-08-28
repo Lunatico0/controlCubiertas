@@ -10,12 +10,13 @@
     "build": "npm run build-react && npm run build-desktop",
     "electron:start": "electron .",
     "electron:build": "electron-builder",
-    "electron": "electron ."
+    "electron": "electron .",
+    "smoke": "electron scripts/smoke-electron.cjs"
   },
   "devDependencies": {
     "concurrently": "^7.0.0",
-    "electron": "^34.4.1",
-    "electron-builder": "^24.4.0"
+    "electron": "^44.0.0",
+    "electron-builder": "^26.15.3"
   },
   "build": {
     "appId": "com.tireops.app",
@@ -53,6 +54,6 @@
   },
   "dependencies": {
     "electron-log": "^5.4.1",
-    "electron-updater": "^6.6.2"
+    "electron-updater": "^6.8.9"
   }
 }

@@ -37,3 +37,10 @@ jobs:
       # cruzado (web/electron) deja rutas rotas y silenciosas, así que se verifica el de verdad.
       - name: Build del renderer para Electron
         run: npm run build-react
+
+      # Arranca Electron de verdad y verifica el proceso principal, el preload y los 12 canales
+      # de IPC. Un salto de versión de Electron que rompa alguno no se nota en ningún test de
+      # React ni en el build: se nota cuando un operario abre la app instalada. xvfb porque el
+      # runner no tiene display.
+      - name: Smoke del proceso principal
+        run: xvfb-run --auto-servernum npx electron scripts/smoke-electron.cjs
