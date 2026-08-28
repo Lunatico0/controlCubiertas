@@ -17,7 +17,12 @@
   ```
   `Patricio-Vela1` NO tiene permiso de push (da 403). Si tras el switch el push falla por credencial cacheada en Windows, correr `gh auth setup-git`.
 - **Pushear el submódulo ANTES que el raíz.** Al revés, el raíz referencia commits que no existen en el remoto del submódulo.
-- `main` se actualiza promoviendo un hito terminado desde una rama `feat/...` con merge **fast-forward**, submódulos primero.
+- **`main` está protegida en los tres repos** (desde el 2026-08-27): sin push directo, sin force-push, sin borrado, y el check de CI tiene que estar verde. `enforce_admins` está prendido, así que la protección aplica también al dueño del repo. Promover un hito a `main` ahora es **por Pull Request**, y el orden sigue siendo el mismo: PR de cada submódulo primero, mergear, bumpear el raíz y recién ahí el PR del raíz.
+  ```bash
+  gh pr create --base main --head feat/01-foundations --fill   # por repo
+  gh pr merge --merge --delete-branch=false                    # con el CI en verde
+  ```
+  El check requerido se llama `test` en los submódulos y `submodulos` en el raíz.
 - **Conventional commits**, una línea. Nunca `Co-Authored-By` ni atribución AI.
 
 ## 3. Stack y comandos
