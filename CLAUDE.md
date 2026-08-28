@@ -56,6 +56,25 @@ Variables opcionales del backend (seguridad HTTP):
 | `LOGIN_RATE_LIMIT` | `10` | Intentos de login FALLIDOS por ventana antes del 429. Los exitosos no consumen cupo. |
 | `LOGIN_RATE_WINDOW_MS` | `900000` | Ventana del límite (15 min). |
 
+### CI y release
+
+Los tres repos tienen `.github/workflows/ci.yml` (push a cualquier rama + PR, Node 22):
+
+| Repo | Qué corre |
+|------|-----------|
+| frontend | check de case de imports → `npm test` → `build:web` → check de peso del bundle |
+| backend | `npm test` (el suite es hermético, no necesita ningún secreto) |
+| raíz | checkout recursivo (**falla si el raíz referencia un commit de submódulo no pusheado**) → build del renderer para Electron |
+
+El raíz tiene además `.github/workflows/release.yml`: se dispara con un tag `X.Y.Z` (**sin `v`**), corre los tests de los dos submódulos como gate, verifica que el tag coincida con el `version` del raíz y del frontend, arma el instalador en un runner limpio y publica el release. Disparado a mano desde Actions no publica nada: sólo deja el instalador como artefacto. **El instalador sigue sin firmar** (requiere un certificado de código): el `latest.yml` de electron-updater trae el sha512 y el workflow publica un `SHA256SUMS.txt`, lo que da integridad pero NO autenticidad.
+
+Checks útiles a mano, desde `frontend/`:
+
+```bash
+npm run check:case    # imports con el case exacto del filesystem (el gotcha de UI/ vs common/)
+npm run check:bundle  # peso de los chunks contra dist/ (requiere haber buildeado antes)
+```
+
 ## 4. Reglas del repo
 
 - **TDD estricto**: test primero, RED → GREEN. Sin excepción.
