@@ -43,4 +43,11 @@ jobs:
       # React ni en el build: se nota cuando un operario abre la app instalada. xvfb porque el
       # runner no tiene display.
       - name: Smoke del proceso principal
-        run: xvfb-run --auto-servernum npx electron scripts/smoke-electron.cjs
+        run: |
+          # El binario de Chromium trae su propio sandbox SUID y aborta si no está en root con
+          # modo 4755, que es como queda al desempaquetarlo en el runner. Se le arregla el owner
+          # en vez de correr con --no-sandbox: así el smoke prueba la misma configuración que
+          # corre en la máquina del usuario.
+          sudo chown root:root node_modules/electron/dist/chrome-sandbox
+          sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
+          xvfb-run --auto-servernum ./node_modules/.bin/electron scripts/smoke-electron.cjs
