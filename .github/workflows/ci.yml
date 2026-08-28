@@ -1,0 +1,39 @@
+# CI del repo raíz (Electron + release).
+#
+# Lo que realmente protege: el checkout recursivo FALLA si este repo referencia un commit de
+# submódulo que no está pusheado en su remoto. Es el error clásico de este proyecto (pushear el
+# raíz antes que el submódulo), y hasta ahora sólo se detectaba cuando alguien clonaba de cero.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  submodulos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout con submódulos
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Los commits de submódulo referenciados existen en su remoto
+        run: git submodule status --recursive
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # build-react hace `cd frontend && npm run build:electron`, así que necesita las deps del
+      # submódulo instaladas: el npm ci del raíz no las trae.
+      - run: npm ci --prefix frontend
+
+      # Build completo del renderer para Electron: usa base './' y sale a desktop/build. Un build
+      # cruzado (web/electron) deja rutas rotas y silenciosas, así que se verifica el de verdad.
+      - name: Build del renderer para Electron
+        run: npm run build-react
