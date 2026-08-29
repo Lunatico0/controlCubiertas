@@ -60,6 +60,7 @@ Variables opcionales del backend (seguridad HTTP):
 | `CORS_ORIGINS` | *(vacío)* | Lista de orígenes permitidos separados por coma. **Vacío = cualquier origen**, que es el comportamiento histórico. Setearla en Vercel es lo que cierra CORS, sin tocar código. Las requests SIN cabecera `Origin` pasan siempre: es el caso del desktop, que carga por `file://`. |
 | `LOGIN_RATE_LIMIT` | `10` | Intentos de login FALLIDOS por ventana antes del 429. Los exitosos no consumen cupo. |
 | `LOGIN_RATE_WINDOW_MS` | `900000` | Ventana del límite (15 min). |
+| `CRON_SECRET` | *(vacío)* | Autentica el cron diario de purga de tenants demo. **Es ESTA y no `DEMO_PURGE_SECRET` la que hace funcionar el cron**: Vercel manda `Authorization: Bearer $CRON_SECRET` en sus invocaciones, pero sólo si la variable existe en el proyecto. Con sólo `DEMO_PURGE_SECRET` seteada, el cron llega sin credencial y se come un 401 en silencio. |
 
 ### CI y release
 
