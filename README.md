@@ -111,8 +111,15 @@ Opcionales del backend:
 | `LOGIN_RATE_LIMIT` | `10` | Intentos de login **fallidos** por ventana antes del 429. |
 | `LOGIN_RATE_WINDOW_MS` | `900000` | Ventana del límite (15 minutos). |
 | `BODY_LIMIT` | `2mb` | Techo del cuerpo de la petición. El logo de la empresa se persiste como dataURL. |
+| `CRON_SECRET` | *(vacío)* | Autentica el cron diario que **borra los tenants de demo vencidos** (`GET /api/admin/demo/purge`, 4:00 AM, definido en `backend/vercel.json`). Vercel manda esta variable como `Authorization: Bearer` en sus invocaciones de cron, pero **sólo si existe en el proyecto**: sin ella el cron llega sin credencial y se come un 401 todos los días en silencio, mientras los tenants efímeros se acumulan en Atlas. **Sin ninguna de estas dos variables el endpoint responde 404**, o sea que queda APAGADO y no abierto: borra bases de datos enteras. |
+| `DEMO_PURGE_SECRET` | *(vacío)* | Alternativa a la anterior, para disparar la purga a mano (curl) sin depender del cron. No hace falta si ya está `CRON_SECRET`. |
 
-Opcionales del frontend: `VITE_SENTRY_DSN` (sin DSN, Sentry queda apagado).
+Opcionales del frontend:
+
+| Variable | Default | Qué hace |
+|----------|---------|----------|
+| `VITE_SENTRY_DSN` | *(vacío)* | Sin DSN, Sentry queda apagado. |
+| `VITE_DEMO_LOGIN` | *(vacío)* | `true` muestra el recuadro con las credenciales de la demo en el login. **Apagado por default a propósito**: un cliente real no puede ver credenciales de prueba en su pantalla de acceso. Se hornea en el BUILD (es una var de Vite), así que agregarla no hace nada hasta redeployar. El instalador de escritorio nunca la ve: `build:electron` sólo setea `BUILD_TARGET` y `VITE_API_URL`. |
 
 Verificar la conectividad antes de arrancar:
 
