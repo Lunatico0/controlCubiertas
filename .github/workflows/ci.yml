@@ -1,0 +1,59 @@
+# CI del repo raíz (Electron + release).
+#
+# Lo que realmente protege: el checkout recursivo FALLA si este repo referencia un commit de
+# submódulo que no está pusheado en su remoto. Es el error clásico de este proyecto (pushear el
+# raíz antes que el submódulo), y hasta ahora sólo se detectaba cuando alguien clonaba de cero.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  submodulos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout con submódulos
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Los commits de submódulo referenciados existen en su remoto
+        run: git submodule status --recursive
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # build-react hace `cd frontend && npm run build:electron`, así que necesita las deps del
+      # submódulo instaladas: el npm ci del raíz no las trae.
+      - run: npm ci --prefix frontend
+
+      # Build completo del renderer para Electron: usa base './' y sale a desktop/build. Un build
+      # cruzado (web/electron) deja rutas rotas y silenciosas, así que se verifica el de verdad.
+      - name: Build del renderer para Electron
+        run: npm run build-react
+
+      # Arranca Electron de verdad y verifica el proceso principal, el preload y los 12 canales
+      # de IPC. Un salto de versión de Electron que rompa alguno no se nota en ningún test de
+      # React ni en el build: se nota cuando un operario abre la app instalada. xvfb porque el
+      # runner no tiene display.
+      - name: Smoke del proceso principal
+        run: |
+          # El binario de Electron NO queda en node_modules tras el npm ci del runner, así que se
+          # dispara su instalador a mano. Sin esto, `npx electron` se baja uno a su propia cache
+          # y el sandbox de abajo no está donde lo buscamos.
+          node node_modules/electron/install.js
+
+          # El Chromium de Electron trae su propio sandbox SUID y aborta si no está en root con
+          # modo 4755, que no es como queda al desempaquetarlo en el runner. Se le arregla el
+          # owner en vez de correr con --no-sandbox: así el smoke prueba la misma configuración
+          # que corre en la máquina del usuario.
+          sudo chown root:root node_modules/electron/dist/chrome-sandbox
+          sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
+
+          xvfb-run --auto-servernum ./node_modules/.bin/electron scripts/smoke-electron.cjs

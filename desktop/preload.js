@@ -1,7 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  imprimirHTML: (html) => ipcRenderer.invoke('imprimir-html', html),
   checkForUpdates: () => ipcRenderer.send('update:check'),
   downloadUpdate: () => ipcRenderer.send('update:download'),
   installUpdate: () => ipcRenderer.send('update:install'),

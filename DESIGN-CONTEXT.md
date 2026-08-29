@@ -1,4 +1,4 @@
-# 🎨 Brief de diseño — ControlCubiertas
+# 🎨 Brief de diseño — TireOps
 
 > Documento de contexto para trabajar la mejora de **UX/UI**. Describe qué es el producto, qué problema resuelve, su dominio, los flujos actuales y las oportunidades detectadas. Pensado para que un diseñador (o Claude Design) entienda el negocio antes de proponer.
 
@@ -6,7 +6,7 @@
 
 ## 1. Qué es
 
-**ControlCubiertas** es una aplicación de gestión del **ciclo de vida de las cubiertas (neumáticos) de una flota de vehículos**. Permite registrar cada cubierta, seguir su estado, asignarla/quitarla de vehículos, mandarla a recapar, descartarla, y llevar un **historial trazable** de cada movimiento con su comprobante.
+**TireOps** es una aplicación de gestión del **ciclo de vida de las cubiertas (neumáticos) de una flota de vehículos**. Permite registrar cada cubierta, seguir su estado, asignarla/quitarla de vehículos, mandarla a recapar, descartarla, y llevar un **historial trazable** de cada movimiento con su comprobante.
 
 Corre como **app web** (React + Vite) y como **app de escritorio** (Electron) contra una **API REST (Node/Express + MongoDB)**.
 
@@ -108,3 +108,8 @@ El **detalle de cubierta** y todas las acciones (crear, asignar, editar, histori
 ---
 
 _Referencias en el repo: flujos y modelo de datos validados en una corrida E2E; problemas técnicos conocidos en [BUGS.md](BUGS.md)._
+
+---
+
+> El producto se llama **TireOps** desde la versión 2.0.0. El repositorio conserva el nombre
+> `controlCubiertas` por historia.

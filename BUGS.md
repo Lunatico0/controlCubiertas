@@ -1,4 +1,4 @@
-# 🐞 Bugs a resolver — ControlCubiertas
+# 🐞 Bugs a resolver — TireOps
 
 > Detectados en el E2E del 2026-06-17 (Chrome DevTools MCP). La app funciona end-to-end y persiste en Atlas; estos son problemas de la **capa cliente**, no de datos.
 
@@ -6,7 +6,7 @@
 
 ## 🔴 Bug 1 — El historial desaparece de la UI tras asignar/desasignar
 
-- **Estado:** `[ ]` pendiente
+- **Estado:** `[x]` CERRADO (2026-08-28)
 - **Severidad:** media (alarma al usuario: parece pérdida de datos)
 - **Síntoma:** Después de **Asignar** (y probablemente **Desasignar**) una cubierta, el modal de detalle muestra `Historial: 0 registros / "No hay registros en el historial"`, `Fecha de alta: No registrada` y `Total asignaciones: 0`.
 - **Realidad:** Los datos están intactos en el backend. `GET /api/tires/:id` devuelve las entradas correctas (Alta + Asignación). Al **recargar la página** y reabrir el detalle, el historial vuelve completo.
@@ -16,6 +16,7 @@
   - [frontend/src/hooks/useTireAction.js](frontend/src/hooks/useTireAction.js)
   - [frontend/src/hooks/useTireDetails.js](frontend/src/hooks/useTireDetails.js)
 - **Fix propuesto:** Tras una acción (assign/unassign/status/correct) re-fetchear `GET /api/tires/:id` y setear ese resultado como estado del detalle, en vez de confiar en lo que devuelve la mutación.
+- **CÓMO SE CERRÓ (2026-08-28):** el re-fetch YA existía (`refresh` en [useTireAction.js](frontend/src/hooks/useTireAction.js), que llama a `fetchTireById`), y por eso el QA del flujo del operario **no pudo reproducir el bug**. Lo que fallaba era el ORDEN: el refresco corría *después* del bloque de impresión, secuencialmente. Con la impresión resolviendo bien no pasa nada; con la promesa de impresión colgada —el modo de falla documentado de `usePrintEngine`— el `await print(...)` no vuelve nunca y el refresco no llega a ejecutarse, así que el drawer se queda con la respuesta de la mutación, que viene **sin `history` populado**: "0 registros". El fix es de orden, no de datos: el refresco subió a inmediatamente después de la mutación, antes de imprimir. Es la misma doctrina que ya rige el resto del flujo (la impresión es un efecto posterior y no gatea nada). Cubierto por [refrescoNoDependeDeImprimir.test.jsx](frontend/src/tests/refrescoNoDependeDeImprimir.test.jsx), que falla si el refresco vuelve a depender de la impresión.
 
 ---
 

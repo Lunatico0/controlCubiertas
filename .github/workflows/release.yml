@@ -1,0 +1,137 @@
+# Release del instalador de escritorio.
+#
+# Qué arregla: hasta ahora el .exe que electron-updater empuja AUTOMÁTICAMENTE a todos los
+# clientes se armaba a mano, en la máquina de un desarrollador, sin que nada garantizara que los
+# tests estuvieran en verde. Este workflow mete el gate que faltaba: los tests de los dos
+# submódulos corren PRIMERO, y el instalador se arma en un runner limpio a partir del commit
+# exacto que apunta el tag. Si un test falla, no hay release.
+#
+# Cómo se usa:
+#   1. Bumpear la versión en el package.json del raíz Y del frontend (tienen que coincidir).
+#   2. git tag 2.3.0 && git push origin 2.3.0     ← los tags de este proyecto van SIN "v"
+#   3. El workflow corre solo y publica el release en GitHub.
+#
+# Para probarlo sin publicar nada: pestaña Actions → Release → Run workflow. Disparado a mano
+# nunca publica (no hay tag), sólo arma el instalador y lo deja como artefacto descargable.
+name: Release
+
+on:
+  push:
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
+  workflow_dispatch:
+
+jobs:
+  # Gate: sin tests en verde no se arma nada. Corre en Linux porque es más rápido y porque el
+  # check de case de imports sólo tiene sentido ahí.
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Tests del backend
+        working-directory: backend
+        run: |
+          npm ci
+          npm test
+
+      - name: Tests del frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          node scripts/check-import-case.mjs src
+          npm test
+
+  build:
+    needs: tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+      - run: npm ci --prefix frontend
+
+      # La versión del raíz y la del frontend se desincronizaron más de una vez. El tag manda:
+      # si no coinciden con él, se corta acá y no cuando alguien nota que el updater ofrece una
+      # versión que no existe.
+      - name: Las versiones coinciden con el tag
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          raiz=$(node -p "require('./package.json').version")
+          front=$(node -p "require('./frontend/package.json').version")
+          echo "tag=$tag  raiz=$raiz  frontend=$front"
+          if [ "$tag" != "$raiz" ] || [ "$tag" != "$front" ]; then
+            echo "::error::El tag ($tag) no coincide con package.json del raíz ($raiz) o del frontend ($front)."
+            exit 1
+          fi
+
+      # build-react usa base './' y sale a desktop/build: es el build de Electron, no el web.
+      - name: Build del renderer
+        run: npm run build-react
+
+      # FIRMA DE CÓDIGO (Authenticode).
+      #
+      # Sin certificado el instalador sale SIN FIRMAR y SmartScreen lo marca "Editor
+      # desconocido", que entrena al usuario a hacer click-through en las advertencias. El
+      # SHA512 del latest.yml y el SHA256SUMS.txt dan INTEGRIDAD (la descarga no se corrompió
+      # ni la cambió un intermediario) pero no AUTENTICIDAD (que el binario lo hicimos
+      # nosotros): los genera el mismo pipeline que arma el .exe.
+      #
+      # Para activarla no hay que tocar código: alcanza con cargar dos secretos en el repo,
+      # CSC_LINK (el .pfx en base64) y CSC_KEY_PASSWORD. electron-builder omite la firma
+      # cuando CSC_LINK no está, así que este workflow funciona igual con y sin certificado.
+      # El aviso de abajo deja el estado a la vista en cada corrida.
+      - name: Estado de la firma de código
+        shell: bash
+        run: |
+          if [ -n "${{ secrets.CSC_LINK }}" ]; then
+            echo "::notice::El instalador se va a FIRMAR con el certificado del repo."
+          else
+            echo "::warning::Sin CSC_LINK: el instalador sale SIN FIRMAR y SmartScreen lo va a marcar como 'Editor desconocido'. Cargá CSC_LINK y CSC_KEY_PASSWORD para firmarlo."
+          fi
+
+      - name: Instalador
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: npx electron-builder --win --publish never
+
+      - name: Instalador y publicación del release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: npx electron-builder --win --publish always
+
+      # SHA256 de todo lo publicable. El latest.yml de electron-updater ya trae un sha512 que
+      # protege contra descargas corruptas; esto le da al usuario final algo que puede verificar
+      # a mano contra el log público de este build. No reemplaza a la firma de código.
+      - name: Checksums
+        shell: bash
+        run: |
+          cd dist
+          sha256sum *.exe *.yml 2>/dev/null | tee ../SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: instalador
+          path: |
+            dist/*.exe
+            dist/*.yml
+            SHA256SUMS.txt
+          retention-days: 14

@@ -17,7 +17,12 @@
   ```
   `Patricio-Vela1` NO tiene permiso de push (da 403). Si tras el switch el push falla por credencial cacheada en Windows, correr `gh auth setup-git`.
 - **Pushear el submódulo ANTES que el raíz.** Al revés, el raíz referencia commits que no existen en el remoto del submódulo.
-- `main` se actualiza promoviendo un hito terminado desde una rama `feat/...` con merge **fast-forward**, submódulos primero.
+- **`main` está protegida en los tres repos** (desde el 2026-08-27): sin push directo, sin force-push, sin borrado, y el check de CI tiene que estar verde. `enforce_admins` está prendido, así que la protección aplica también al dueño del repo. Promover un hito a `main` ahora es **por Pull Request**, y el orden sigue siendo el mismo: PR de cada submódulo primero, mergear, bumpear el raíz y recién ahí el PR del raíz.
+  ```bash
+  gh pr create --base main --head feat/01-foundations --fill   # por repo
+  gh pr merge --merge --delete-branch=false                    # con el CI en verde
+  ```
+  El check requerido se llama `test` en los submódulos y `submodulos` en el raíz.
 - **Conventional commits**, una línea. Nunca `Co-Authored-By` ni atribución AI.
 
 ## 3. Stack y comandos
@@ -56,13 +61,33 @@ Variables opcionales del backend (seguridad HTTP):
 | `LOGIN_RATE_LIMIT` | `10` | Intentos de login FALLIDOS por ventana antes del 429. Los exitosos no consumen cupo. |
 | `LOGIN_RATE_WINDOW_MS` | `900000` | Ventana del límite (15 min). |
 
+### CI y release
+
+Los tres repos tienen `.github/workflows/ci.yml` (push a cualquier rama + PR, Node 22):
+
+| Repo | Qué corre |
+|------|-----------|
+| frontend | check de case de imports → `npm test` → `build:web` → check de peso del bundle |
+| backend | `npm test` (el suite es hermético, no necesita ningún secreto) |
+| raíz | checkout recursivo (**falla si el raíz referencia un commit de submódulo no pusheado**) → build del renderer para Electron |
+
+El raíz tiene además `.github/workflows/release.yml`: se dispara con un tag `X.Y.Z` (**sin `v`**), corre los tests de los dos submódulos como gate, verifica que el tag coincida con el `version` del raíz y del frontend, arma el instalador en un runner limpio y publica el release. Disparado a mano desde Actions no publica nada: sólo deja el instalador como artefacto. **El instalador sigue sin firmar** (requiere un certificado de código): el `latest.yml` de electron-updater trae el sha512 y el workflow publica un `SHA256SUMS.txt`, lo que da integridad pero NO autenticidad.
+
+Checks útiles a mano, desde `frontend/`:
+
+```bash
+npm run check:case    # imports con el case exacto del filesystem (el gotcha de UI/ vs common/)
+npm run check:bundle  # peso de los chunks contra dist/ (requiere haber buildeado antes)
+```
+
 ## 4. Reglas del repo
 
 - **TDD estricto**: test primero, RED → GREEN. Sin excepción.
 - **El suite de tests del backend es hermético.** Los 37 archivos que tocan DB usan `mongodb-memory-server`; ninguno lee `MONGO_URI` ni `CONTROL_PLANE_URI`. Verificado el 2026-08-25 corriendo el suite completo con las dos variables apuntando a un host inexistente: 169 pasan, 1 skipped. Se puede correr entero sin miedo.
 - **El frontend tiene tests desde el 2026-08-26**: vitest + jsdom + testing-library, en `frontend/src/tests/`. La config vive en `vitest.config.js` SEPARADA de `vite.config.js` a propósito: `vite build` no lee ese archivo, así que el build de producción nunca importa vitest. Los alias se heredan por `mergeConfig`, no hay que duplicarlos.
 - Frontend: imports por alias (`@/`, `@components`, `@context`, `@constants`, `@utils`, `@hooks`, `@api`), nunca rutas relativas largas.
-- **GOTCHA de mayúsculas**: existen `components/UI/` y `components/common/` con nombres solapados (`Modal.jsx` en ambos). Windows es case-insensitive y Linux no: un import con el case equivocado pasa en local y **rompe el build de Vercel**. Verificar el case exacto antes de importar.
+- **Un solo sistema de diseño** (desde el 2026-08-28): `components/common/` es donde vive TODO lo compartido. `@utils/tokens` (`tituloPantalla`, `button.lime`) más las variables CSS de `index.css` son la única fuente de verdad para colores, radios, espaciado y transiciones. No hay paleta alternativa.
+- **GOTCHA de mayúsculas** (histórico, ya sin par vivo): existían `components/UI/Modal.jsx` y `components/common/Modal.jsx`, y un import con el case equivocado pasaba en Windows y **rompía el build de Vercel**. `UI/` se eliminó con la UI legacy, así que el par ya no existe, pero `npm run check:case` sigue en el CI para que no vuelva a aparecer.
 - **GOTCHA de `ref` en componentes propios**: si un componente de input va a recibir `{...register(...)}` de react-hook-form, TIENE que estar envuelto en `forwardRef` y pasarle el `ref` al control. En React 18 `ref` no viaja dentro de props: sin eso, RHF no ve el campo y el formulario queda mudo en los dos sentidos (no lee lo tipeado ni se puebla con `reset()`), sin un solo error visible. Le pasó a `FloatingField` y se llevó puestos tres formularios, incluido el cambio de contraseña. Cubierto por `src/tests/FloatingField.test.jsx`.
 - Backend: errores vía `utils/httpError.js`, controladores envueltos en `utils/asyncHandler.js`. No tirar `res.status().json()` a mano en controladores nuevos.
 - `frontend/src/components/` sigue la convención `common/` para lo compartido. No duplicar componentes ya existentes ahí.
@@ -84,12 +109,16 @@ Variables opcionales del backend (seguridad HTTP):
 - **Máscara y separador de patente configurables por tenant** ([backend/src/utils/plate.js](backend/src/utils/plate.js)).
 - **No hay back-ref automática en Mongoose** entre `tire` y `vehicle.tires[]`. Al desasignar o borrar una cubierta hay que mantener **los dos lados a mano** (ver Bug 3 en BUGS.md).
 - **Serverless**: el cold start de Atlas genera races. Tanto `controlPlane` como `tenantConnections` tienen mitigaciones específicas (promesa compartida, `.catch` en la conexión base). No "simplificarlas".
+- **La impresión NO gatea la acción, y no puede hacerlo.** La web no informa si el comprobante se imprimió: `window.print()` no devuelve resultado, `onafterprint` dispara igual al cancelar y el `beforeunload` de la ventana llega en los dos casos. Por eso [usePrintEngine.js](frontend/src/hooks/usePrintEngine.js) resuelve `{ dispatched: true }` y nunca un booleano "impreso", y la UI dice "enviado a impresión", jamás "impreso". El movimiento se persiste primero (además, el número de comprobante lo reserva el backend DENTRO de la mutación; pedirlo antes es lo que quemaba correlativos) y la impresión es un efecto posterior. Es opcional por tenant vía `autoPrint` (default `true`), configurable en Empresa. No reintroducir mensajes ni reglas que afirmen que algo se imprimió.
+- **Demo de producto: tenant EFÍMERO por visitante** ([backend/src/services/demo.service.js](backend/src/services/demo.service.js)). El tenant marcado `isDemoTemplate` (Andes Cargo) es una PLANTILLA: nadie entra a su base. Al loguearse con sus credenciales, el login clona un tenant descartable (`tenant_demo_<hex>`, con `demoOf` + `demoExpiresAt` a 48 hs), copia config y datos, y firma el token contra ese. El tenant efímero **viaja en el refresh token** (`demoTenantId`): sin eso, el primer refresh devolvería al visitante a la plantilla. La purga corre por el cron diario de Vercel (`GET /api/admin/demo/purge`, autenticado con `DEMO_PURGE_SECRET` o `CRON_SECRET`) y también en cada login de demo. **Sin la env var, el endpoint responde 404** (apagado, no abierto: borra bases enteras). El recuadro del login se enciende con `VITE_DEMO_LOGIN=true` y está apagado por default, para que un cliente real no vea credenciales de prueba.
 - **Refresh de token compartido** ([frontend/src/api/client.js](frontend/src/api/client.js)): N requests con 401 simultáneos disparan UN solo `POST /refresh`. El código `TENANT_INACTIVE` fuerza logout sin intentar refresh.
 
 ## 7. Trampas conocidas
 
 - `build:electron` usa `base: './'` (Electron carga por `file://`) y el build web usa `base: '/'`. Un build cruzado deja rutas rotas y silenciosas.
 - `build:electron` tiene hardcodeada la URL de producción del backend en el script de `package.json`.
+- **Electron no arranca desde la terminal de Claude Code sin desactivar una variable.** El harness setea `ELECTRON_RUN_AS_NODE=1`, y con eso `electron` corre como un Node pelado: `require('electron')` devuelve la ruta al binario y `app` queda `undefined`. Antes de cualquier `electron ...` hay que hacer `unset ELECTRON_RUN_AS_NODE`.
+- El smoke del proceso principal es `npm run smoke` desde la raíz ([scripts/smoke-electron.cjs](scripts/smoke-electron.cjs)). Necesita `desktop/build/` ya generado y verifica main, preload y los 11 canales de IPC. Corre en el CI del raíz con `xvfb-run`.
 - Los tests del backend necesitan `--experimental-vm-modules` (proyecto ESM puro). Correr `jest` pelado falla.
 - Timezone: las fechas manuales del formulario se serializan a UTC y se corren un día en GMT-3 (Bug 2). Cualquier campo `date` nuevo arrastra el mismo problema.
 
