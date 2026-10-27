@@ -24,7 +24,8 @@
     "publish": {
       "provider": "github",
       "owner": "Lunatico0",
-      "repo": "controlCubiertas"
+      "repo": "controlCubiertas",
+      "vPrefixedTagName": false
     },
     "files": [
       "desktop/**/*",
