@@ -29,6 +29,11 @@ jobs:
 
       - run: npm ci
 
+      # La config de electron-builder contra el schema de la versión instalada. Sin esto, un
+      # cambio de API de builder sólo se descubre al pushear el tag de un release.
+      - name: Config de electron-builder
+        run: node scripts/check-builder-config.cjs
+
       # build-react hace `cd frontend && npm run build:electron`, así que necesita las deps del
       # submódulo instaladas: el npm ci del raíz no las trae.
       - run: npm ci --prefix frontend

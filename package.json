@@ -42,11 +42,13 @@
       "icon": "desktop/icon.ico",
       "target": "nsis",
       "artifactName": "TireOps-Setup-${version}.${ext}",
-      "signingHashAlgorithms": [
-        "sha256"
-      ],
-      "rfc3161TimeStampServer": "http://timestamp.digicert.com",
-      "publisherName": "Patricio Pittana"
+      "signtoolOptions": {
+        "signingHashAlgorithms": [
+          "sha256"
+        ],
+        "rfc3161TimeStampServer": "http://timestamp.digicert.com",
+        "publisherName": "Patricio Pittana"
+      }
     },
     "nsis": {
       "oneClick": false,
