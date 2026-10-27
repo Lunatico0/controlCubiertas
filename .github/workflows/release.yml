@@ -50,6 +50,10 @@ jobs:
   build:
     needs: tests
     runs-on: windows-latest
+    # El token del repo es de sólo lectura por default: sin esto, electron-builder arma el
+    # instalador y se come un 403 al crear el release (le pasó al primer tag publicado, 2.2.1).
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
