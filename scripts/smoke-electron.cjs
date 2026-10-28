@@ -10,6 +10,7 @@
 // Sale con 0 si todo pasa, con 1 y el detalle si algo falla.
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
+const { instalarPoliticaDeVentanas } = require('../desktop/ventanasNuevas')
 
 const RAIZ = path.join(__dirname, '..')
 const INDEX = path.join(RAIZ, 'desktop/build/index.html')
@@ -71,8 +72,8 @@ async function correr() {
   // el sandbox de una ventana ya creada. Se verifican sobre el fuente, que es lo único
   // disponible, y están acá para que un refactor no se los lleve en silencio (t44, t45).
   const mainSrc = require('fs').readFileSync(path.join(RAIZ, 'desktop/main.js'), 'utf8')
-  if (/setWindowOpenHandler/.test(mainSrc)) ok('los links externos tienen guard de apertura (setWindowOpenHandler)')
-  else mal('falta setWindowOpenHandler: los links target=_blank quedan inertes')
+  if (/instalarPoliticaDeVentanas\(mainWindow\.webContents/.test(mainSrc)) ok('la ventana principal instala la política de ventanas nuevas')
+  else mal('la ventana principal no instala instalarPoliticaDeVentanas: links inertes y comprobante sin ventana')
   if (/sandbox:\s*true/.test(mainSrc)) ok('la ventana principal declara sandbox: true')
   else mal('la ventana principal no declara sandbox explícito')
 
@@ -110,6 +111,38 @@ async function correr() {
   )
   if (faltantes.length === 0) ok(`window.electronAPI expone los ${API_ESPERADA.length} métodos del preload`)
   else mal('el preload no expuso todo', faltantes.join(', '))
+
+  // 3b. La política de ventanas nuevas, con window.open() reales. El comprobante se imprime en
+  // una ventana about:blank que el renderer escribe con document.write (frontend/src/hooks/
+  // usePrintEngine.js): si la política la deniega, window.open devuelve null y en 2.2.1 eso
+  // dejó la impresión muerta en desktop sin que ningún test lo viera.
+  const abiertasAfuera = []
+  instalarPoliticaDeVentanas(win.webContents, {
+    shell: { openExternal: (url) => abiertasAfuera.push(url) },
+    log: { warn: () => {} },
+  })
+  const comprobante = await win.webContents.executeJavaScript(
+    `(() => {
+      const w = window.open("", "", "width=800,height=600")
+      if (!w) return "null"
+      w.document.write("<p id='x'>ok</p>")
+      w.document.close()
+      const escrito = w.document.getElementById("x")?.textContent
+      w.close()
+      return escrito
+    })()`,
+    true,
+  )
+  if (comprobante === 'ok') ok('window.open("") abre la ventana del comprobante y se puede escribir')
+  else mal('la ventana del comprobante no se abre', `window.open("") devolvió ${comprobante}`)
+
+  const externo = await win.webContents.executeJavaScript(`window.open("https://example.com/notas") === null`, true)
+  if (externo && abiertasAfuera.includes('https://example.com/notas')) ok('un link https se manda al navegador y no abre ventana en la app')
+  else mal('un link https no se manda al navegador', `null=${externo}, openExternal=${JSON.stringify(abiertasAfuera)}`)
+
+  const local = await win.webContents.executeJavaScript(`window.open("file:///C:/Windows/notepad.exe") === null`, true)
+  if (local && !abiertasAfuera.some((u) => u.startsWith('file:'))) ok('un link file:// se ignora')
+  else mal('un link file:// no se ignoró', JSON.stringify(abiertasAfuera))
 
   // El aviso de CSP de Electron SÍ cuenta: el build inyecta la Content-Security-Policy como
   // <meta> (frontend/vite.config.js) porque en file:// no hay respuesta HTTP donde ponerla como
