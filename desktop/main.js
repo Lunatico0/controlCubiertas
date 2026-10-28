@@ -5,6 +5,7 @@ const fs = require('fs');
 const https = require('https');
 const log = require('electron-log');
 const pkg = require('../package.json');
+const { instalarPoliticaDeVentanas } = require('./ventanasNuevas');
 
 // Versión REAL de la app (2.0.0), tomada del package.json — NO de app.getVersion(), que en dev
 // lanzado como `electron desktop/main.js` devuelve la versión de Electron. En la app empaquetada
@@ -242,32 +243,8 @@ function createWindow() {
     log.error('[Electron] No se pudo cargar el index:', err);
   });
 
-  // t44: Electron DENIEGA window.open() por default cuando no hay setWindowOpenHandler, así
-  // que los links con target=_blank (los del changelog de las release notes, por ejemplo)
-  // quedaban inertes: el clic no hacía absolutamente nada, ni siquiera un error visible.
-  // Se abren en el navegador del sistema, NO en una ventana de Electron: una página remota
-  // dentro de la app tendría el mismo origen privilegiado que el renderer.
-  const abrirExterno = (url) => {
-    try {
-      // Solo http/https. Sin este chequeo, un file:// o un javascript: inyectado en el
-      // contenido se le pasaría al sistema operativo para que lo ejecute.
-      const { protocol } = new URL(url);
-      if (protocol === 'http:' || protocol === 'https:') shell.openExternal(url);
-      else log.warn('[Electron] Link con protocolo no permitido, ignorado:', protocol);
-    } catch {
-      log.warn('[Electron] Link con URL inválida, ignorado');
-    }
-    return { action: 'deny' };
-  };
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => abrirExterno(url));
-
-  // Misma regla para una navegación de la ventana PRINCIPAL fuera de la app: la app carga por
-  // file:// y no navega a ningún lado; cualquier intento se manda al navegador.
-  mainWindow.webContents.on('will-navigate', (event, url) => {
-    if (url.startsWith('file://')) return;
-    event.preventDefault();
-    abrirExterno(url);
-  });
+  // Links externos al navegador del sistema y ventana del comprobante: ver desktop/ventanasNuevas.js.
+  instalarPoliticaDeVentanas(mainWindow.webContents, { shell, log });
 
   mainWindow.webContents.on('did-finish-load', () => {
     log.info('[Electron] Carga de ventana completa');
