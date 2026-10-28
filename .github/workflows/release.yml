@@ -9,16 +9,32 @@
 # Cómo se usa:
 #   1. Bumpear la versión en el package.json del raíz Y del frontend (tienen que coincidir).
 #   2. git tag 2.3.0 && git push origin 2.3.0     ← los tags de este proyecto van SIN "v"
-#   3. El workflow corre solo y publica el release en GitHub.
+#   3. El workflow crea UN release en BORRADOR con los cuatro assets: el .exe, el .blockmap, el
+#      latest.yml y el SHA256SUMS.txt.
+#   4. Escribir las notas en GitHub y publicar el borrador. Recién ahí electron-updater lo ve y
+#      lo ofrece a los clientes: un borrador no existe para el updater.
 #
 # Para probarlo sin publicar nada: pestaña Actions → Release → Run workflow. Disparado a mano
-# nunca publica (no hay tag), sólo arma el instalador y lo deja como artefacto descargable.
+# nunca publica (no hay tag), sólo arma el instalador y lo deja como artefacto descargable, con
+# los mismos cuatro archivos que llevaría el release.
+#
+# Por qué electron-builder ya no publica: su publisher de GitHub tiene una race. El .exe y el
+# .blockmap se suben en paralelo, cada uno crea su propio publisher, ninguno encuentra release
+# para el tag y cada uno crea el suyo. Con 2.2.1 salieron DOS borradores para el mismo tag. Ahora
+# electron-builder sólo arma (`--publish never`) y el release lo crea un único `gh release create`
+# con todos los assets juntos. scripts/check-builder-config.cjs (en el CI) falla si algún
+# workflow vuelve a llamar a electron-builder sin `--publish never`.
 name: Release
 
 on:
   push:
     tags: ['[0-9]+.[0-9]+.[0-9]+']
   workflow_dispatch:
+
+# Sólo lectura por default. El único job que escribe es `publish`, y es el único que no ejecuta
+# código de dependencias: npm ci y electron-builder corren con un token que no puede tocar nada.
+permissions:
+  contents: read
 
 jobs:
   # Gate: sin tests en verde no se arma nada. Corre en Linux porque es más rápido y porque el
@@ -50,10 +66,6 @@ jobs:
   build:
     needs: tests
     runs-on: windows-latest
-    # El token del repo es de sólo lectura por default: sin esto, electron-builder arma el
-    # instalador y se come un 403 al crear el release (le pasó al primer tag publicado, 2.2.1).
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -107,35 +119,142 @@ jobs:
             echo "::warning::Sin CSC_LINK: el instalador sale SIN FIRMAR y SmartScreen lo va a marcar como 'Editor desconocido'. Cargá CSC_LINK y CSC_KEY_PASSWORD para firmarlo."
           fi
 
+      # Con tag o sin tag, electron-builder SÓLO arma. El latest.yml lo escribe igual: sale de la
+      # sección `publish` del package.json, no de si se sube o no.
       - name: Instalador
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         env:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
         run: npx electron-builder --win --publish never
 
-      - name: Instalador y publicación del release
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-        run: npx electron-builder --win --publish always
+      # Junta en release/ exactamente lo que se publica, y antes verifica que el latest.yml diga
+      # la verdad sobre el instalador: electron-updater descarga el archivo que nombra `path` y
+      # rechaza la actualización si el sha512 no coincide, así que un latest.yml desfasado deja a
+      # todos los clientes sin actualizar, en silencio. El instalador sale del propio latest.yml,
+      # no de un nombre armado a mano, para que no puedan divergir. js-yaml viene con
+      # electron-builder (es con lo que escribe el latest.yml).
+      - name: Assets del release
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf release
+          mkdir release
+          node - <<'JS'
+          const fs = require('node:fs');
+          const crypto = require('node:crypto');
+          const yaml = require('js-yaml');
+          const fallar = (msg) => { console.log(`::error::${msg}`); process.exit(1); };
+
+          const version = require('./package.json').version;
+          const info = yaml.load(fs.readFileSync('dist/latest.yml', 'utf8'));
+          if (String(info.version) !== version) fallar(`latest.yml es de ${info.version} y package.json de ${version}.`);
+
+          const instalador = info.path;
+          const entrada = (info.files || []).find((f) => f.url === instalador);
+          if (!instalador || !entrada) fallar(`latest.yml no lista su instalador (${instalador}) en files[].`);
+          if (!fs.existsSync(`dist/${instalador}`)) fallar(`No existe dist/${instalador}, el que nombra latest.yml.`);
+
+          const bytes = fs.readFileSync(`dist/${instalador}`);
+          const sha512 = crypto.createHash('sha512').update(bytes).digest('base64');
+          if (sha512 !== info.sha512 || sha512 !== entrada.sha512) fallar(`El sha512 de latest.yml no es el de dist/${instalador}.`);
+          if (entrada.size !== bytes.length) fallar(`latest.yml dice ${entrada.size} bytes y dist/${instalador} tiene ${bytes.length}.`);
+
+          const blockmap = `${instalador}.blockmap`;
+          if (!fs.existsSync(`dist/${blockmap}`)) fallar(`Falta dist/${blockmap}: sin él no hay descarga diferencial.`);
+
+          for (const archivo of [instalador, blockmap, 'latest.yml']) {
+            fs.copyFileSync(`dist/${archivo}`, `release/${archivo}`);
+          }
+          console.log(`latest.yml coincide con ${instalador} (${bytes.length} bytes).`);
+          JS
 
       # SHA256 de todo lo publicable. El latest.yml de electron-updater ya trae un sha512 que
       # protege contra descargas corruptas; esto le da al usuario final algo que puede verificar
-      # a mano contra el log público de este build. No reemplaza a la firma de código.
+      # a mano contra el log público de este build. No reemplaza a la firma de código. Se escribe
+      # afuera y después se mueve para que no se liste a sí mismo.
       - name: Checksums
         shell: bash
+        working-directory: release
         run: |
-          cd dist
-          sha256sum *.exe *.yml 2>/dev/null | tee ../SHA256SUMS.txt
+          set -euo pipefail
+          sha256sum -- * > ../SHA256SUMS.txt
+          mv ../SHA256SUMS.txt SHA256SUMS.txt
+          cat SHA256SUMS.txt
 
+      # El artefacto es lo que publica el job siguiente: el release lleva byte a byte lo que se
+      # verificó acá. En un disparo manual es lo único que queda.
       - uses: actions/upload-artifact@v4
         with:
           name: instalador
-          path: |
-            dist/*.exe
-            dist/*.yml
-            SHA256SUMS.txt
+          path: release/
+          if-no-files-found: error
           retention-days: 14
+
+  # UN solo proceso crea el release y sube los cuatro assets. Ya no hay dos uploads compitiendo
+  # por crear el release del mismo tag.
+  publish:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    # Dos corridas del mismo tag (re-run, tag movido) no pueden consultar y crear a la vez: GitHub
+    # acepta varios borradores con el mismo tag, así que el chequeo de abajo no alcanza solo.
+    concurrency:
+      group: release-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: instalador
+          path: release
+
+      - name: Release único con todos los assets
+        working-directory: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          ls -l
+
+          # Lo que llega es lo que se verificó en el build, del tag que se publica, y está completo.
+          sha256sum -c SHA256SUMS.txt
+          grep -qx "version: $TAG" latest.yml || { echo "::error::latest.yml no es de la versión $TAG."; exit 1; }
+          shopt -s nullglob
+          exes=(*.exe)
+          blockmaps=(*.exe.blockmap)
+          assets=(*)
+          if [ "${#exes[@]}" -ne 1 ] || [ "${#blockmaps[@]}" -ne 1 ] || [ "${#assets[@]}" -ne 4 ]; then
+            echo "::error::Se esperaban exactamente 4 assets (.exe, .blockmap, latest.yml, SHA256SUMS.txt) y llegaron: ${assets[*]}"
+            exit 1
+          fi
+
+          # BORRADOR, como hasta ahora (era el default de electron-builder): el release recién
+          # llega a los clientes cuando alguien escribe las notas y lo publica a mano.
+          #
+          # Si ya hay un borrador para el tag (re-run de un job que falló a mitad) se le reemplazan
+          # los assets en vez de crear otro. Si ya está PUBLICADO no se toca: los clientes ya
+          # pueden haber bajado ese latest.yml. Cualquier error que no sea "no existe" corta, para
+          # no crear un segundo release por un error de red.
+          if estado=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft 2>&1); then
+            if [ "$estado" = "true" ]; then
+              echo "Ya existe un borrador para $TAG: se reemplazan sus assets."
+              gh release upload "$TAG" "${assets[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+            else
+              echo "::error::El release $TAG ya está publicado. No se pisa: subí un tag nuevo."
+              exit 1
+            fi
+          elif printf '%s' "$estado" | grep -qi 'release not found'; then
+            gh release create "$TAG" "${assets[@]}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --verify-tag \
+              --draft \
+              --title "TireOps $TAG" \
+              --notes ""
+          else
+            echo "::error::No se pudo consultar el release $TAG: $estado"
+            exit 1
+          fi
+
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,assets --jq '{draft: .isDraft, assets: [.assets[].name]}'
